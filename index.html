@@ -40,7 +40,6 @@
         window.dispatchEvent(new Event('firebase-ready'));
     </script>
     <style>
-        /* TEMA POR DEFECTO: ESMERALDA CECYTEQ */
         :root {
             --bg-light: #f1f5f9;
             --card-bg: #ffffff;
@@ -56,7 +55,6 @@
             --danger-red: #dc2626;
         }
 
-        /* TEMA: AZUL NEÓN */
         body.theme-blue {
             --cecyteq-green: #2563eb;
             --cecyteq-green-hover: #1d4ed8;
@@ -64,7 +62,6 @@
             --cecyteq-blue-hover: #0891b2;
         }
 
-        /* TEMA: NARANJA OCASO */
         body.theme-orange {
             --cecyteq-green: #ea580c;
             --cecyteq-green-hover: #c2410c;
@@ -72,7 +69,6 @@
             --cecyteq-orange-hover: #a16207;
         }
 
-        /* MODO OSCURO */
         body.dark-mode {
             --bg-light: #0f172a;
             --card-bg: #1e293b;
@@ -392,7 +388,6 @@
         let html5QrCode = null;
         let unsubscribeDocente = null;
 
-        // --- SISTEMA DE AUDIO (EFECTOS DE RETROALIMENTACIÓN) ---
         function reproducirSonido(tipo) {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -402,13 +397,13 @@
                 gain.connect(audioCtx.destination);
 
                 if (tipo === 'exito') {
-                    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nota D5
-                    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.08); // Nota A5
+                    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.08);
                     gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
                     osc.start();
                     osc.stop(audioCtx.currentTime + 0.25);
-                } else if (type = 'click') {
+                } else {
                     osc.frequency.setValueAtTime(400, audioCtx.currentTime);
                     gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
@@ -418,7 +413,6 @@
             } catch(e) {}
         }
 
-        // --- SELECTOR DE TEMAS Y MODO OSCURO ---
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             let isDark = document.body.classList.contains('dark-mode');
@@ -438,7 +432,6 @@
             reproducirSonido('exito');
         }
 
-        // Cargar preferencias guardadas al iniciar
         window.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('cecyteq_dark') === '1') {
                 document.body.classList.add('dark-mode');
@@ -450,7 +443,6 @@
             }
         });
 
-        // MODAL DE ALERTA MODERNA
         function mostrarAlertaCustom(titulo, mensaje) {
             document.getElementById('modalCustomTitle').innerText = titulo;
             document.getElementById('modalCustomText').innerText = mensaje;
@@ -1096,6 +1088,7 @@
         }
 
         function dispararImportacionGrupo() { document.getElementById('csvGrupoInput').click(); }
+        
         async function importarArchivoGeneral(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -1104,50 +1097,90 @@
             if (!nombreGrupo) return;
 
             const reader = new FileReader();
-            reader.onload = async function(evt) {
-                const data = new Uint8Array(evt.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                let alumnosImportados = [];
-                let nombresVistos = new Set();
 
-                rows.forEach((row, i) => {
-                    if (row && row.length > 0) {
-                        let posibleNombre = "";
-                        row.forEach(cell => {
-                            if (cell && String(cell).trim().length > 3 && isNaN(String(cell))) {
-                                if (!posibleNombre) posibleNombre = String(cell).trim();
+            if (file.name.endsWith('.pdf')) {
+                reader.onload = async function(evt) {
+                    const typedarray = new Uint8Array(evt.target.result);
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    let alumnosImportados = [];
+                    let nombresVistos = new Set();
+                    let contador = 0;
+
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        
+                        textContent.items.forEach((item) => {
+                            let texto = item.str.trim();
+                            
+                            let esBasuraPDF = texto.startsWith('/') || texto.includes('OBJ') || texto.includes('STREAM') || 
+                                              texto.includes('BT') || texto.includes('ET') || texto.includes('TJ') || 
+                                              texto.length < 5 || !isNaN(texto) || texto.includes('[') || texto.includes(']');
+
+                            if (!esBasuraPDF && !texto.toLowerCase().includes("nombre") && !texto.toLowerCase().includes("cecyteq")) {
+                                let limpio = texto.toUpperCase();
+                                if (!nombresVistos.has(limpio)) {
+                                    nombresVistos.add(limpio);
+                                    alumnosImportados.push({ id: Date.now() + (contador++), nombre: limpio, estado: "Regular" });
+                                }
                             }
                         });
-                        if (posibleNombre && !posibleNombre.toLowerCase().includes("nombre")) {
-                            let limpio = posibleNombre.toUpperCase();
-                            if (!nombresVistos.has(limpio)) {
-                                nombresVistos.add(limpio);
-                                alumnosImportados.push({ id: Date.now() + i, nombre: limpio, estado: "Regular" });
+                    }
+
+                    finalizarImportacionGrupo(nombreGrupo, alumnosImportados);
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.onload = async function(evt) {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    let alumnosImportados = [];
+                    let nombresVistos = new Set();
+                    let contador = 0;
+
+                    rows.forEach((row) => {
+                        if (row && row.length > 0) {
+                            let posibleNombre = "";
+                            row.forEach(cell => {
+                                if (cell && String(cell).trim().length > 3 && isNaN(String(cell))) {
+                                    if (!posibleNombre) posibleNombre = String(cell).trim();
+                                }
+                            });
+                            if (posibleNombre && !posibleNombre.toLowerCase().includes("nombre")) {
+                                let limpio = posibleNombre.toUpperCase();
+                                if (!nombresVistos.has(limpio)) {
+                                    nombresVistos.add(limpio);
+                                    alumnosImportados.push({ id: Date.now() + (contador++), nombre: limpio, estado: "Regular" });
+                                }
                             }
                         }
-                    }
-                });
+                    });
 
-                let nuevoG = {
-                    id: Date.now(),
-                    nombre: nombreGrupo.trim().toUpperCase(),
-                    bloqueado: false,
-                    alumnos: alumnosImportados,
-                    parciales: {
-                        "1er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
-                        "2do Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
-                        "3er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} }
-                    }
+                    finalizarImportacionGrupo(nombreGrupo, alumnosImportados);
                 };
-                docenteDataGlobal.grupos.push(nuevoG);
-                await guardarDocenteEnFirebase();
-                renderizarGrupos(docenteDataGlobal.grupos);
-                reproducirSonido('exito');
-                mostrarAlertaCustom("Importación Exitosa", `¡Grupo importado (${alumnosImportados.length} alumnos)!`);
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        async function finalizarImportacionGrupo(nombreGrupo, alumnosImportados) {
+            let nuevoG = {
+                id: Date.now(),
+                nombre: nombreGrupo.trim().toUpperCase(),
+                bloqueado: false,
+                alumnos: alumnosImportados,
+                parciales: {
+                    "1er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
+                    "2do Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
+                    "3er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} }
+                }
             };
-            reader.readAsArrayBuffer(file);
+            docenteDataGlobal.grupos.push(nuevoG);
+            await guardarDocenteEnFirebase();
+            renderizarGrupos(docenteDataGlobal.grupos);
+            reproducirSonido('exito');
+            mostrarAlertaCustom("Importación Exitosa", `¡Grupo importado con éxito (${alumnosImportados.length} alumnos detectados)!`);
         }
 
         function abrirEscanearQR() {
