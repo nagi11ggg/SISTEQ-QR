@@ -323,11 +323,15 @@
         </div>
 
         <div id="seccionAgregarTarea" class="seccion-colapsable">
-            <h4 style="color: var(--cecyteq-green); margin-bottom: 8px; font-weight: 800;">Publicar Nueva Tarea</h4>
+            <h4 style="color: var(--cecyteq-green); margin-bottom: 8px; font-weight: 800;">Publicar Nueva Tarea con Límite</h4>
             <div class="form-row">
                 <div class="form-group">
                     <label>Nombre de la Actividad:</label>
                     <input type="text" id="inputNombreTarea" placeholder="EJ: ACT 2">
+                </div>
+                <div class="form-group" style="max-width: 220px;">
+                    <label>Fecha y Hora Límite:</label>
+                    <input type="datetime-local" id="inputFechaLimiteTarea">
                 </div>
                 <div><button class="btn-principal" onclick="agregarTareaGrupo()">Publicar Tarea</button></div>
             </div>
@@ -768,8 +772,6 @@
 
             let nuevoAlumnoId = Date.now();
             grupo.alumnos.push({ id: nuevoAlumnoId, nombre: nombre, estado: estadoInput });
-
-            // ORDENAR ALFABÉTICAMENTE DESPUÉS DE AGREGAR
             grupo.alumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
             if (grupo.parciales) {
@@ -799,13 +801,15 @@
 
             let pData = obtenerParcialActualObj();
             let inputT = document.getElementById('inputNombreTarea');
+            let inputF = document.getElementById('inputFechaLimiteTarea');
             let nombreTarea = inputT.value.trim().toUpperCase();
+            let fechaLimite = inputF.value ? new Date(inputF.value).getTime() : (Date.now() + 7 * 24 * 60 * 60 * 1000);
 
             if (!nombreTarea) { mostrarAlertaCustom("Aviso", "Escribe el nombre de la actividad."); return; }
 
             let nuevaId = 't_' + Date.now();
             if (!pData.tareas) pData.tareas = [];
-            pData.tareas.push({ id: nuevaId, nombre: nombreTarea });
+            pData.tareas.push({ id: nuevaId, nombre: nombreTarea, limite: fechaLimite });
 
             if (grupo.alumnos) {
                 grupo.alumnos.forEach(a => {
@@ -816,9 +820,10 @@
             }
 
             inputT.value = '';
+            inputF.value = '';
             await guardarYRenderizar();
             reproducirSonido('exito');
-            mostrarAlertaCustom("¡Publicada!", `✅ Actividad "${nombreTarea}" publicada.`);
+            mostrarAlertaCustom("¡Publicada!", `✅ Actividad "${nombreTarea}" publicada con límite de tiempo.`);
         }
 
         async function eliminarTareaGrupo(tareaId) {
@@ -1116,7 +1121,6 @@
                         textContent.items.forEach((item) => {
                             let texto = item.str.trim();
                             
-                            // LÓGICA DE FILTRADO ESPECÍFICA PARA LISTAS CECYTEQ (DETECTA NOMBRES Y DESCARTA ENCABEZADOS/BASURA)
                             let esBasuraPDF = texto.startsWith('/') || texto.includes('OBJ') || texto.includes('STREAM') || 
                                               texto.includes('BT') || texto.includes('ET') || texto.includes('TJ') || 
                                               texto.length < 5 || (!isNaN(texto) && Number(texto) > 100) || 
@@ -1127,7 +1131,6 @@
                                               texto.toLowerCase().includes("tprog") ||
                                               texto.toLowerCase().includes("lista");
 
-                            // Si es un renglón válido con letras y longitud adecuada
                             if (!esBasuraPDF && isNaN(texto) && texto.length > 5) {
                                 let limpio = texto.toUpperCase();
                                 if (!nombresVistos.has(limpio)) {
@@ -1138,9 +1141,7 @@
                         });
                     }
 
-                    // ORDENAR ALFABÉTICAMENTE LOS ALUMNOS IMPORTADOS DEL PDF
                     alumnosImportados.sort((a, b) => a.nombre.localeCompare(b.nombre));
-
                     finalizarImportacionGrupo(nombreGrupo, alumnosImportados);
                 };
                 reader.readAsArrayBuffer(file);
@@ -1172,9 +1173,7 @@
                         }
                     });
 
-                    // ORDENAR ALFABÉTICAMENTE LOS ALUMNOS IMPORTADOS DE EXCEL
                     alumnosImportados.sort((a, b) => a.nombre.localeCompare(b.nombre));
-
                     finalizarImportacionGrupo(nombreGrupo, alumnosImportados);
                 };
                 reader.readAsArrayBuffer(file);
@@ -1214,6 +1213,7 @@
             } else { document.getElementById('modalQR').style.display = 'none'; }
         }
 
+        // VALIDACIÓN ANTIFALSIFICACIÓN (Expiración de 5 min + Fecha Límite + Registro único)
         async function procesarQRScanned(codigo) {
             try {
                 let data = JSON.parse(codigo);
@@ -1223,13 +1223,37 @@
                 let alumno = grupo.alumnos.find(a => a.id == data.id);
                 if (!alumno) { mostrarAlertaCustom("Error", "⚠️ Alumno no encontrado."); return; }
 
+                let tiempoActual = Date.now();
+
+                // 1. Validar expiración corta de 5 minutos del QR
+                if (data.exp && tiempoActual > data.exp) {
+                    mostrarAlertaCustom("QR Expirado", "❌ Este código QR ha caducado (duración máxima de 5 minutos). El alumno debe generar uno nuevo.");
+                    return;
+                }
+
+                // 2. Validar fecha límite de la tarea
+                if (data.actividadId && pData.tareas) {
+                    let tareaObj = pData.tareas.find(t => t.id === data.actividadId);
+                    if (tareaObj && tareaObj.limite && tiempoActual > tareaObj.limite) {
+                        mostrarAlertaCustom("Fuera de Tiempo", "❌ El tiempo límite para entregar esta actividad ya ha expirado.");
+                        return;
+                    }
+                }
+
                 if (!pData.calificaciones[alumno.id]) {
                     pData.calificaciones[alumno.id] = { firmas: 0, examen: 0, tareasStatus: {}, extrasStatus: {}, califFinal: 0 };
                 }
                 let c = pData.calificaciones[alumno.id];
+
+                // 3. Validar si ya se había registrado la tarea para evitar duplicados
                 if (data.actividadId && c.tareasStatus) {
+                    if (c.tareasStatus[data.actividadId]) {
+                        mostrarAlertaCustom("Aviso", "⚠️ Esta tarea ya había sido registrada anteriormente para este alumno.");
+                        return;
+                    }
                     c.tareasStatus[data.actividadId] = true;
                 }
+
                 c.firmas += 1;
                 await guardarYRenderizar();
                 reproducirSonido('exito');
