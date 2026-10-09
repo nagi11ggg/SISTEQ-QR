@@ -48,7 +48,6 @@
             --danger-red: #dc2626;
         }
 
-        /* MODO OSCURO MEJORADO Y ELEGANTE */
         body.dark-mode {
             --bg-light: #0b0f19;
             --card-bg: #131c2e;
@@ -69,14 +68,12 @@
         .top-tools { position: absolute; right: 0; top: 0; display: flex; gap: 5px; }
         .btn-tool { background: var(--input-bg); border: 1.5px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; }
 
-        /* TARJETAS DE SELECCIÓN REDISEÑADAS */
         .select-card-group { background: var(--input-bg); border: 2px solid var(--border-color); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; text-align: left; }
         .select-card-group:focus-within { border-color: var(--cecyteq-green); box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
         
         .select-card-label { display: block; font-size: 0.78rem; font-weight: 800; color: var(--cecyteq-green); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
         .select-card-group select { width: 100%; padding: 6px 2px; border: none; font-size: 0.9rem; background: transparent; color: var(--text-main); outline: none; font-weight: 700; cursor: pointer; }
 
-        /* FILA COMPACTA PARA EL PARCIAL */
         .row-parcial-container { display: flex; align-items: center; justify-content: space-between; background: var(--input-bg); border: 2px solid var(--border-color); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
         .row-parcial-container:focus-within { border-color: var(--cecyteq-green); }
         .row-parcial-label { font-size: 0.78rem; font-weight: 800; color: var(--cecyteq-green); text-transform: uppercase; }
@@ -95,7 +92,6 @@
         
         .btn-descargar { background: linear-gradient(135deg, var(--cecyteq-green), var(--cecyteq-green-hover)); color: white; border: none; padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 800; cursor: pointer; width: 100%; margin-top: 8px; }
 
-        /* MODALES PERSONALIZADOS */
         .modal-custom { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); justify-content: center; align-items: center; z-index: 2000; padding: 15px; backdrop-filter: blur(4px); }
         .modal-custom-content { background: var(--card-bg); padding: 22px; border-radius: 16px; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.3); border-top: 5px solid var(--cecyteq-green); max-height: 85vh; overflow-y: auto; }
         .modal-custom-title { color: var(--cecyteq-green); font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; }
@@ -140,7 +136,6 @@
             </select>
         </div>
 
-        <!-- SECCIÓN DE PARCIAL COMPACTA Y ESTILIZADA -->
         <div class="row-parcial-container">
             <span class="row-parcial-label">📊 Selecciona el Parcial</span>
             <select id="selectParcial" class="select-parcial-small" onchange="actualizarListaActividades()">
@@ -165,13 +160,12 @@
         </div>
 
         <div id="qrResultBox" class="qr-result-box">
-            <p style="font-weight: 800; color: var(--cecyteq-green); margin-bottom: 6px;">¡Tu código QR está listo!</p>
+            <p style="font-weight: 800; color: var(--cecyteq-green); margin-bottom: 6px;">¡Tu código QR está listo (Válido por 5 min)!</p>
             <div id="qrcode"></div>
             <button class="btn-descargar" onclick="descargarQR()">📥 Descargar Imagen QR</button>
         </div>
     </div>
 
-    <!-- MODALES PERSONALIZADOS -->
     <div id="modalCustomAlert" class="modal-custom">
         <div class="modal-custom-content">
             <div style="font-size: 2rem; margin-bottom: 4px;">🔔</div>
@@ -181,7 +175,6 @@
         </div>
     </div>
 
-    <!-- MODAL TABLA DE CALIFICACIONES ALUMNO -->
     <div id="modalTablaAlumno" class="modal-custom">
         <div class="modal-custom-content" style="max-width: 480px;">
             <div class="modal-custom-title">📋 Tus Calificaciones</div>
@@ -341,12 +334,16 @@
                 return;
             }
 
+            // Candado de expiración: El código QR dura exactamente 5 minutos (300,000 ms)
+            let tiempoExpiracion = Date.now() + (5 * 60 * 1000);
+
             let payload = {
                 docente: docenteUser,
                 grupoId: grupoId,
                 id: Number(alumnoId),
                 parcial: parcial,
-                actividadId: actividadId || null
+                actividadId: actividadId || null,
+                exp: tiempoExpiracion
             };
 
             let containerQR = document.getElementById('qrcode');
