@@ -1213,7 +1213,7 @@
             } else { document.getElementById('modalQR').style.display = 'none'; }
         }
 
-        // VALIDACIÓN ANTIFALSIFICACIÓN (Expiración de 5 min + Fecha Límite + Registro único)
+        // VALIDACIÓN ANTIFALSIFICACIÓN Y ACTUALIZACIÓN DE ESTADO ESCANEADO
         async function procesarQRScanned(codigo) {
             try {
                 let data = JSON.parse(codigo);
@@ -1256,6 +1256,12 @@
 
                 c.firmas += 1;
                 await guardarYRenderizar();
+
+                // Sincronizar el estado de escaneo para que el generador del alumno lo bloquee y muestre 'CÓDIGO ESCANEADO'
+                if (data.actividadId) {
+                    localStorage.setItem(`cecyteq_qr_${alumno.id}_${data.parcial}_${data.actividadId}`, 'escaneado');
+                }
+
                 reproducirSonido('exito');
                 mostrarAlertaCustom("¡Firma Registrada!", `✅ Firma registrada con éxito a: ${alumno.nombre}`);
             } catch(e) { mostrarAlertaCustom("Error", "⚠️ Código QR inválido."); }
