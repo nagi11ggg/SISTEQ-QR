@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Docente - CECYTEQ San Juan del Río</title>
+    <!-- SheetJS para Excel/CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- PDF.js para leer archivos PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Librería HTML5-Qrcode para escaneo con cámara -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Firebase SDK v10 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAMSdJbBCh7za9CSV0oKSL9QLE8OyyQhJs",
+            authDomain: "cecyqr-pro.firebaseapp.com",
+            projectId: "cecyqr-pro",
+            storageBucket: "cecyqr-pro.firebasestorage.app",
+            messagingSenderId: "35266770164",
+            appId: "1:35266770164:web:b92bd883c3bd3a26941aa1",
+            measurementId: "G-8R0R1377Y5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.FB_db = db;
+        window.FB_collection = collection;
+        window.FB_getDocs = getDocs;
+        window.FB_doc = doc;
+        window.FB_setDoc = setDoc;
+        window.FB_getDoc = getDoc;
+        window.FB_updateDoc = updateDoc;
+        window.FB_onSnapshot = onSnapshot;
+
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+    <style>
+        /* TEMA POR DEFECTO: ESMERALDA CECYTEQ */
+        :root {
+            --bg-light: #f1f5f9;
+            --card-bg: #ffffff;
+            --cecyteq-green: #059669;
+            --cecyteq-green-hover: #047857;
+            --cecyteq-orange: #f97316;
+            --cecyteq-orange-hover: #ea580c;
+            --cecyteq-blue: #2563eb;
+            --cecyteq-blue-hover: #1d4ed8;
+            --text-main: #0f172a;
+            --text-gray: #475569;
+            --border-color: #cbd5e1;
+            --danger-red: #dc2626;
+        }
+
+        /* TEMA: AZUL NEÓN */
+        body.theme-blue {
+            --cecyteq-green: #2563eb;
+            --cecyteq-green-hover: #1d4ed8;
+            --cecyteq-blue: #06b6d4;
+            --cecyteq-blue-hover: #0891b2;
+        }
+
+        /* TEMA: NARANJA OCASO */
+        body.theme-orange {
+            --cecyteq-green: #ea580c;
+            --cecyteq-green-hover: #c2410c;
+            --cecyteq-orange: #ca8a04;
+            --cecyteq-orange-hover: #a16207;
+        }
+
+        /* MODO OSCURO */
+        body.dark-mode {
+            --bg-light: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-gray: #94a3b8;
+            --border-color: #334155;
+        }
+        body.dark-mode th {
+            background-color: #1e293b !important;
+            color: #34d399 !important;
+        }
+        body.dark-mode .modal-custom-content {
+            background: #1e293b;
+            color: #f8fafc;
+        }
+        body.dark-mode .modal-custom-body {
+            background: #0f172a;
+            color: #cbd5e1;
+            border-color: #334155;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: background-color 0.2s, color 0.2s; }
+        body { background-color: var(--bg-light); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .view { display: none; flex: 1; flex-direction: column; padding: 15px; overflow-y: auto; height: 100%; }
+        .view.active { display: flex; }
+        .auth-container { max-width: 420px; margin: auto; width: 100%; background: var(--card-bg); padding: 25px; border-radius: 18px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); border: 2px solid var(--cecyteq-green); }
+        .auth-header { text-align: center; margin-bottom: 20px; }
+        .auth-header h1 { color: var(--cecyteq-green); font-size: 1.7rem; font-weight: 800; margin-top: 8px; }
+        .auth-header p { color: var(--text-gray); font-size: 0.88rem; }
+        .auth-footer-link { text-align: center; margin-top: 18px; font-size: 0.88rem; }
+        .auth-footer-link a { color: var(--cecyteq-blue); text-decoration: none; font-weight: 700; cursor: pointer; }
+        .home-container { max-width: 950px; margin: auto; width: 100%; text-align: center; }
+        .home-header { margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; }
+        
+        .top-settings-bar { position: absolute; left: 0; top: 0; display: flex; gap: 6px; }
+        .btn-top-util { background: var(--card-bg); border: 1.5px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        .btn-logout-absolute { position: absolute; right: 0; top: 0; background: #fee2e2; color: var(--danger-red); border: 1.5px solid #fca5a5; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+        .logo-portal { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid var(--cecyteq-green); background: var(--card-bg); box-shadow: 0 4px 10px rgba(0,0,0,0.15); cursor: pointer; }
+        .home-controls { display: flex; gap: 12px; margin-bottom: 20px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .search-box { flex: 1; min-width: 220px; padding: 10px 16px; border: 2px solid var(--border-color); border-radius: 10px; font-size: 0.9rem; background: var(--card-bg); color: var(--text-main); outline: none; text-transform: uppercase; }
+        .btn-principal { background: linear-gradient(135deg, var(--cecyteq-green), var(--cecyteq-green-hover)); color: white; border: none; padding: 10px 18px; border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25); width: 100%; }
+        .btn-secundario { background: linear-gradient(135deg, var(--cecyteq-orange), var(--cecyteq-orange-hover)); color: white; border: none; padding: 10px 16px; border-radius: 10px; font-size: 0.9rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25); }
+        .groups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; margin-bottom: 25px; text-align: left; }
+        .group-card { background: var(--card-bg); border: 2px solid var(--border-color); border-radius: 14px; padding: 18px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between; }
+        .group-info { cursor: pointer; flex: 1; }
+        .group-card h3 { color: var(--cecyteq-green); font-size: 1.15rem; margin-bottom: 6px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+        .logo-card-preview { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--cecyteq-green); }
+        .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--border-color); }
+        .btn-entrar { font-size: 0.88rem; color: var(--cecyteq-blue); font-weight: 800; background: none; border: none; cursor: pointer; }
+        .btn-eliminar-grupo { background-color: #fee2e2; color: var(--danger-red); border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+        .group-top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 12px 18px; border-radius: 12px; border: 2px solid var(--border-color); margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+        .btn-regresar { background: var(--card-bg); border: 1.5px solid var(--border-color); color: var(--text-main); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.85rem; }
+        .group-title-container { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .btn-control-header { background: var(--card-bg); border: 1.5px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+        .select-parcial { padding: 6px 10px; border: 2px solid var(--cecyteq-green); border-radius: 8px; font-size: 0.88rem; font-weight: 800; color: var(--cecyteq-green); background: var(--card-bg); outline: none; cursor: pointer; }
+        .group-actions-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; background: var(--card-bg); padding: 12px; border-radius: 12px; border: 2px solid var(--border-color); }
+        .group-actions-bar.oculto { display: none; }
+        .btn-accion-panel { background: var(--card-bg); border: 1.5px solid var(--border-color); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 0.83rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-accion-panel.primary { background: linear-gradient(135deg, var(--cecyteq-green), var(--cecyteq-green-hover)); color: white; border: none; }
+        .btn-accion-panel.accent { background: linear-gradient(135deg, var(--cecyteq-blue), var(--cecyteq-blue-hover)); color: white; border: none; }
+        .workspace { background: var(--card-bg); border: 2px solid var(--border-color); border-radius: 12px; padding: 16px; flex: 1; overflow-y: auto; }
+        .seccion-colapsable { display: none; background: var(--card-bg); border: 2px solid var(--cecyteq-green); padding: 16px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .seccion-colapsable.active { display: block; }
+        .form-row { display: flex; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { flex: 1; min-width: 180px; text-align: left; }
+        .form-group label { display: block; font-size: 0.82rem; font-weight: 800; color: var(--text-main); margin-bottom: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 9px; border: 2px solid var(--border-color); border-radius: 8px; font-size: 0.88rem; background: var(--card-bg); color: var(--text-main); outline: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 600px; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.88rem; color: var(--text-main); }
+        th { background-color: rgba(5, 150, 105, 0.1); color: var(--cecyteq-green); font-weight: 800; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--cecyteq-green); }
+        .badge-estado { padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; display: inline-block; cursor: pointer; text-align: center; }
+        .badge-regular { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .badge-recuperacion { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+        .badge-recursamiento { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+        /* MODALES PERSONALIZADOS */
+        .modal-custom { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.65); justify-content: center; align-items: center; z-index: 2000; padding: 15px; backdrop-filter: blur(4px); }
+        .modal-custom-content { background: var(--card-bg); padding: 22px; border-radius: 16px; width: 100%; max-width: 380px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.2); border-top: 5px solid var(--cecyteq-green); }
+        .modal-custom-title { color: var(--cecyteq-green); font-size: 1.25rem; font-weight: 800; margin-bottom: 8px; }
+        .modal-custom-body { color: var(--text-gray); font-size: 0.93rem; margin-bottom: 20px; line-height: 1.5; white-space: pre-line; text-align: left; background: var(--bg-light); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .modal-custom-btn { background: linear-gradient(135deg, var(--cecyteq-green), var(--cecyteq-green-hover)); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 0.9rem; font-weight: 800; cursor: pointer; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <input type="file" id="csvGrupoInput" accept=".xlsx, .xls, .csv, .pdf" style="display: none;" onchange="importarArchivoGeneral(event)">
+    <input type="file" id="inputLogoPortal" accept="image/*" style="display: none;" onchange="cargarLogoPortal(event)">
+
+    <!-- MODAL DE ALERTA PERSONALIZADO -->
+    <div id="modalCustomAlert" class="modal-custom">
+        <div class="modal-custom-content">
+            <div style="font-size: 2.2rem; margin-bottom: 5px;">🔔</div>
+            <div id="modalCustomTitle" class="modal-custom-title">Aviso</div>
+            <div id="modalCustomText" class="modal-custom-body">Mensaje aquí</div>
+            <button class="modal-custom-btn" onclick="cerrarModalCustom()">Entendido</button>
+        </div>
+    </div>
+
+    <div id="modalQR" class="modal-custom">
+        <div class="modal-custom-content" style="max-width: 420px;">
+            <h3 style="color: var(--cecyteq-green); margin-bottom: 12px; font-weight: 800;">📷 Escanear Código QR</h3>
+            <div id="reader" style="width: 100%; border-radius: 8px; overflow: hidden;"></div>
+            <button class="modal-custom-btn" style="margin-top: 15px; background: var(--danger-red);" onclick="cerrarEscanearQR()">Cerrar Cámara</button>
+        </div>
+    </div>
+
+    <!-- VISTA: LOGIN -->
+    <div id="vistaLogin" class="view active">
+        <div class="auth-container" style="margin: auto;">
+            <div class="auth-header">
+                <div style="font-size: 3rem; margin-bottom: 2px;">👨‍🏫</div>
+                <h1>Portal Docente</h1>
+                <p>CECYTEQ • Plantel San Juan del Río</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="form-group" style="max-width: 100%;">
+                    <label>Usuario o Correo:</label>
+                    <input type="text" id="loginUser" placeholder="EJ: karol.perez" style="text-transform: none;">
+                </div>
+                <div class="form-group" style="max-width: 100%;">
+                    <label>Contraseña:</label>
+                    <input type="password" id="loginPass" placeholder="••••••••" style="text-transform: none;">
+                </div>
+                <button class="btn-principal" onclick="iniciarSesion()">Iniciar Sesión</button>
+            </div>
+            <div class="auth-footer-link">
+                <p>¿No tienes cuenta? <a onclick="cambiarVistaAuth('vistaRegistro')">Regístrate aquí</a></p>
+                <p style="margin-top: 6px;"><a onclick="cambiarVistaAuth('vistaRecuperar')">¿Olvidaste tu contraseña?</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA: REGISTRO -->
+    <div id="vistaRegistro" class="view">
+        <div class="auth-container" style="margin: auto;">
+            <div class="auth-header">
+                <div style="font-size: 3rem; margin-bottom: 2px;">📝</div>
+                <h1>Registro Docente</h1>
+                <p>Crea tu cuenta en la nube</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="form-group" style="max-width: 100%;">
+                    <label>Nombre Completo:</label>
+                    <input type="text" id="regNombre" placeholder="EJ: KAROL PEREZ">
+                </div>
+                <div class="form-group" style="max-width: 100%;">
+                    <label>Usuario o Correo de Acceso:</label>
+                    <input type="text" id="regUser" placeholder="EJ: karol.perez" style="text-transform: none;">
+                </div>
+                <div class="form-group" style="max-width: 100%;">
+                    <label>Contraseña:</label>
+                    <input type="password" id="regPass" placeholder="••••••••" style="text-transform: none;">
+                </div>
+                <button class="btn-principal" onclick="registrarDocente()">Registrarse</button>
+            </div>
+            <div class="auth-footer-link">
+                <p>¿Ya tienes cuenta? <a onclick="cambiarVistaAuth('vistaLogin')">Inicia sesión</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA: RECUPERACIÓN -->
+    <div id="vistaRecuperar" class="view">
+        <div class="auth-container" style="margin: auto;">
+            <div class="auth-header">
+                <div style="font-size: 3rem; margin-bottom: 2px;">🔑</div>
+                <h1>Recuperar Contraseña</h1>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="form-group" style="max-width: 100%;">
+                    <label>Usuario:</label>
+                    <input type="text" id="recUser" placeholder="EJ: karol.perez" style="text-transform: none;">
+                </div>
+                <div class="form-group" style="max-width: 100%;">
+                    <label>Nueva Contraseña:</label>
+                    <input type="password" id="recNewPass" placeholder="Nueva contraseña" style="text-transform: none;">
+                </div>
+                <button class="btn-principal" onclick="recuperarContrasena()">Restablecer Contraseña</button>
+            </div>
+            <div class="auth-footer-link">
+                <p><a onclick="cambiarVistaAuth('vistaLogin')">← Volver</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA 1: INICIO -->
+    <div id="vistaInicio" class="view">
+        <div class="home-container">
+            <div class="home-header">
+                <div class="top-settings-bar">
+                    <button class="btn-top-util" onclick="toggleDarkMode()" title="Modo Oscuro/Claro">🌙</button>
+                    <button class="btn-top-util" onclick="cambiarTemaColor()" title="Cambiar Tema de Color">🎨</button>
+                </div>
+                <button class="btn-logout-absolute" onclick="cerrarSesion()">Salir</button>
+                <div class="logo-portal-container" onclick="dispararCargaLogoPortal()">
+                    <img id="imgLogoPortal" class="logo-portal" src="" style="display: none;">
+                    <div id="placeholderLogoPortal" class="logo-portal" style="display: flex; align-items: center; justify-content: center; font-size: 1.7rem; color: var(--cecyteq-green);">🖼️</div>
+                </div>
+                <div>
+                    <h1 id="tituloBienvenidaDocente" style="color: var(--cecyteq-green); font-size: 1.5rem; font-weight: 800;">Portal Docente</h1>
+                    <p style="color: var(--text-gray); font-size: 0.85rem;">Plantel San Juan del Río • CECYTEQ</p>
+                </div>
+            </div>
+
+            <div class="home-controls">
+                <input type="text" id="inputBuscadorGrupos" class="search-box" placeholder="🔍 Buscar grupo..." oninput="filtrarGrupos()">
+                <div style="display: flex; gap: 8px; width: 100%; justify-content: center;">
+                    <button class="btn-secundario" style="flex: 1; font-size: 0.85rem;" onclick="dispararImportacionGrupo()">📥 Importar</button>
+                    <button class="btn-principal" style="flex: 1; font-size: 0.85rem; width: auto;" onclick="promptCrearGrupo()">+ Registrar</button>
+                </div>
+            </div>
+
+            <div class="groups-grid" id="gridGrupos"></div>
+        </div>
+    </div>
+
+    <!-- VISTA 2: PANEL DE UN GRUPO -->
+    <div id="vistaGrupo" class="view">
+        <div class="group-top-bar">
+            <button class="btn-regresar" onclick="irAInicio()">← Volver</button>
+            <div class="group-title-container">
+                <h2 id="tituloGrupoActivo" style="color: var(--cecyteq-green); font-size: 1.15rem; font-weight: 800;">Grupo: --</h2>
+                <button id="btnToggleMenuOpciones" class="btn-control-header" onclick="toggleMenuOpciones()">
+                    <span id="iconoMenuToggle">🔽</span> <span id="textoMenuToggle">Menú</span>
+                </button>
+                <button id="btnCandadoGrupo" class="btn-control-header" onclick="alternarCandadoGrupo()">
+                    <span id="iconoCandado">🔓</span> <span id="textoCandado">Abierto</span>
+                </button>
+                <button id="btnEscanearQRHeader" class="btn-control-header" onclick="abrirEscanearQR()" style="color: var(--cecyteq-blue);">
+                    <span>📷</span> QR
+                </button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <select id="selectParcialActivo" class="select-parcial" onchange="cambiarParcialGrupo()">
+                    <option value="1er Parcial">1er Parcial</option>
+                    <option value="2do Parcial">2do Parcial</option>
+                    <option value="3er Parcial">3er Parcial</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="menuAccionesGrupo" class="group-actions-bar">
+            <button class="btn-accion-panel primary" onclick="toggleSeccion('seccionAgregarTarea')">➕ Tarea</button>
+            <button class="btn-accion-panel accent" onclick="toggleSeccion('seccionInscribir')">👤 Inscribir</button>
+            <button class="btn-accion-panel" onclick="verAlumnosRecuperacion()">⚠️ Recuperación</button>
+            <button class="btn-accion-panel" onclick="toggleSeccion('seccionBuscar')">🔍 Buscar</button>
+            <button class="btn-accion-panel" onclick="exportarExcelGrupo()">📊 Excel</button>
+            <button class="btn-accion-panel" onclick="toggleSeccion('seccionPonderaciones')">⚙️ Ponderación</button>
+            <button class="btn-accion-panel" onclick="mostrarEstadisticasGrupo()" style="color: #3730a3;">📈 Estadísticas</button>
+            <button class="btn-accion-panel" onclick="analizarConIA()" style="color: #6b21a8;">🤖 Asistente IA</button>
+        </div>
+
+        <div id="seccionAgregarTarea" class="seccion-colapsable">
+            <h4 style="color: var(--cecyteq-green); margin-bottom: 8px; font-weight: 800;">Publicar Nueva Tarea</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre de la Actividad:</label>
+                    <input type="text" id="inputNombreTarea" placeholder="EJ: ACT 2">
+                </div>
+                <div><button class="btn-principal" onclick="agregarTareaGrupo()">Publicar Tarea</button></div>
+            </div>
+        </div>
+
+        <div id="seccionInscribir" class="seccion-colapsable">
+            <h4 style="color: var(--cecyteq-green); margin-bottom: 8px; font-weight: 800;">Inscribir Nuevo Alumno</h4>
+            <div class="form-row">
+                <div class="form-group"><label>Nombre Completo:</label><input type="text" id="inputNombreAlumno" placeholder="EJ: PEREZ JUAN"></div>
+                <div class="form-group" style="max-width: 160px;"><label>Estado:</label>
+                    <select id="selectEstadoInscripcion">
+                        <option value="Regular">Regular</option>
+                        <option value="Recuperación">Recuperación</option>
+                        <option value="Recursamiento">Recursamiento</option>
+                    </select>
+                </div>
+                <div><button class="btn-principal" onclick="agregarAlumnoGrupo()">Inscribir</button></div>
+            </div>
+        </div>
+
+        <div id="seccionBuscar" class="seccion-colapsable">
+            <div class="form-row" style="margin-bottom: 0;">
+                <div class="form-group"><input type="text" id="inputBuscadorAlumnoTabla" placeholder="🔍 Filtrar alumno por nombre..." oninput="renderizarTablaAlumnos()"></div>
+            </div>
+        </div>
+
+        <div id="seccionPonderaciones" class="seccion-colapsable">
+            <h4 style="color: var(--cecyteq-green); margin-bottom: 10px; font-weight: 800;">⚙️ Configuración y Ponderaciones</h4>
+            <div class="form-row">
+                <div class="form-group" style="max-width: 120px;"><label>Meta Firmas:</label><input type="number" id="inputMetaFirmas" value="10" onchange="guardarPonderaciones()"></div>
+                <div class="form-group" style="max-width: 130px;"><label>% Actividades:</label><input type="number" id="inputPorcentajeAct" value="40" onchange="guardarPonderaciones()"></div>
+                <div class="form-group" style="max-width: 130px;"><label>% Examen:</label><input type="number" id="inputPorcentajeExam" value="40" onchange="guardarPonderaciones()"></div>
+                <div class="form-group" style="max-width: 130px;"><label>Meta Examen:</label><input type="number" id="inputMetaExamen" value="10" onchange="guardarPonderaciones()"></div>
+            </div>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 12px 0;">
+            <label style="font-size: 0.82rem; font-weight: 800; color: var(--text-main); display: block; margin-bottom: 6px;">Columnas Extra (Ej: Proyecto, Participación):</label>
+            <div class="form-row">
+                <div class="form-group" style="max-width: 180px;"><input type="text" id="inputNombreColExtra" placeholder="NOMBRE (EJ: PROYECTO)"></div>
+                <div class="form-group" style="max-width: 120px;"><input type="number" id="inputPorcentajeColExtra" placeholder="% VALOR"></div>
+                <div class="form-group" style="max-width: 120px;"><input type="number" id="inputMetaColExtra" placeholder="META PTS"></div>
+                <div><button class="btn-secundario" onclick="agregarColumnaExtra()">+ Añadir</button></div>
+            </div>
+            <div id="listaColumnasExtraContainer" style="margin-top: 8px; font-size: 0.82rem; color: var(--text-gray);"></div>
+        </div>
+
+        <div class="workspace">
+            <h3 style="color: var(--cecyteq-green); font-size: 1rem; margin-bottom: 10px; font-weight: 800;">📋 Alumnos (<span id="lblParcialActualTabla">1er Parcial</span>)</h3>
+            <div id="tablaAlumnosContainer" style="overflow-x: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let docenteActualUser = localStorage.getItem('cecyteq_docente_actual') || null;
+        let docenteDataGlobal = null;
+        let grupoActualId = null;
+        let html5QrCode = null;
+        let unsubscribeDocente = null;
+
+        // --- SISTEMA DE AUDIO (EFECTOS DE RETROALIMENTACIÓN) ---
+        function reproducirSonido(tipo) {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (tipo === 'exito') {
+                    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nota D5
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.08); // Nota A5
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                } else if (type = 'click') {
+                    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.08);
+                }
+            } catch(e) {}
+        }
+
+        // --- SELECTOR DE TEMAS Y MODO OSCURO ---
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            let isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('cecyteq_dark', isDark ? '1' : '0');
+            reproducirSonido('click');
+        }
+
+        function cambiarTemaColor() {
+            let temas = ['', 'theme-blue', 'theme-orange'];
+            let actual = localStorage.getItem('cecyteq_tema_idx') || '0';
+            let siguienteIdx = (Number(actual) + 1) % temas.length;
+            
+            document.body.classList.remove('theme-blue', 'theme-orange');
+            if (temas[siguienteIdx]) document.body.classList.add(temas[siguienteIdx]);
+            
+            localStorage.setItem('cecyteq_tema_idx', siguienteIdx);
+            reproducirSonido('exito');
+        }
+
+        // Cargar preferencias guardadas al iniciar
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('cecyteq_dark') === '1') {
+                document.body.classList.add('dark-mode');
+            }
+            let temaIdx = localStorage.getItem('cecyteq_tema_idx');
+            let temas = ['', 'theme-blue', 'theme-orange'];
+            if (temaIdx && temas[temaIdx]) {
+                document.body.classList.add(temas[temaIdx]);
+            }
+        });
+
+        // MODAL DE ALERTA MODERNA
+        function mostrarAlertaCustom(titulo, mensaje) {
+            document.getElementById('modalCustomTitle').innerText = titulo;
+            document.getElementById('modalCustomText').innerText = mensaje;
+            document.getElementById('modalCustomAlert').style.display = 'flex';
+            reproducirSonido('exito');
+        }
+        function cerrarModalCustom() {
+            document.getElementById('modalCustomAlert').style.display = 'none';
+            reproducirSonido('click');
+        }
+
+        window.addEventListener('firebase-ready', async () => {
+            if (docenteActualUser) {
+                sincronizarDatosDocenteRealtime(docenteActualUser);
+            } else {
+                cambiarVistaAuth('vistaLogin');
+            }
+        });
+
+        function sincronizarDatosDocenteRealtime(user) {
+            const docRef = window.FB_doc(window.FB_db, "docentes", user);
+            unsubscribeDocente = window.FB_onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    docenteDataGlobal = docSnap.data();
+                    if (document.getElementById('vistaInicio').classList.contains('active')) {
+                        renderizarGrupos(docenteDataGlobal.grupos || []);
+                    } else if (document.getElementById('vistaGrupo').classList.contains('active') && grupoActualId) {
+                        sincronizarInputsPonderacionUI();
+                        renderizarTablaAlumnos();
+                    } else {
+                        irAInicio();
+                    }
+                } else {
+                    docenteDataGlobal = null;
+                    cambiarVistaAuth('vistaLogin');
+                }
+            });
+        }
+
+        function cambiarVista(vistaId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(vistaId).classList.add('active');
+        }
+        function cambiarVistaAuth(vistaId) { cambiarVista(vistaId); }
+
+        async function guardarDocenteEnFirebase() {
+            if (!docenteDataGlobal) return;
+            try {
+                const docRef = window.FB_doc(window.FB_db, "docentes", docenteDataGlobal.user);
+                await window.FB_setDoc(docRef, docenteDataGlobal);
+            } catch(e) { mostrarAlertaCustom("Error", "Error al sincronizar con la nube."); }
+        }
+
+        async function registrarDocente() {
+            let nombre = document.getElementById('regNombre').value.trim().toUpperCase();
+            let user = document.getElementById('regUser').value.trim();
+            let pass = document.getElementById('regPass').value.trim();
+
+            if (!nombre || !user || !pass) { mostrarAlertaCustom("Campos Vacíos", "Completa todos los campos para registrarte."); return; }
+
+            try {
+                const docRef = window.FB_doc(window.FB_db, "docentes", user);
+                const docSnap = await window.FB_getDoc(docRef);
+                if (docSnap.exists()) { mostrarAlertaCustom("Atención", "⚠️ Este usuario ya está registrado."); return; }
+
+                let nuevoDocente = { nombre: nombre, user: user, pass: pass, grupos: [], logo: "" };
+                await window.FB_setDoc(docRef, nuevoDocente);
+                mostrarAlertaCustom("¡Éxito!", "✅ Registro exitoso en la nube.");
+                cambiarVistaAuth('vistaLogin');
+            } catch(e) { mostrarAlertaCustom("Error", "Error al registrar el docente."); }
+        }
+
+        async function iniciarSesion() {
+            let user = document.getElementById('loginUser').value.trim();
+            let pass = document.getElementById('loginPass').value.trim();
+
+            try {
+                const docRef = window.FB_doc(window.FB_db, "docentes", user);
+                const docSnap = await window.FB_getDoc(docRef);
+                if (docSnap.exists() && docSnap.data().pass === pass) {
+                    docenteDataGlobal = docSnap.data();
+                    docenteActualUser = user;
+                    localStorage.setItem('cecyteq_docente_actual', user);
+                    sincronizarDatosDocenteRealtime(user);
+                    reproducirSonido('exito');
+                    irAInicio();
+                } else { mostrarAlertaCustom("Acceso Denegado", "❌ Usuario o contraseña incorrectos."); }
+            } catch(e) { mostrarAlertaCustom("Error", "Error al iniciar sesión."); }
+        }
+
+        function cerrarSesion() {
+            if (unsubscribeDocente) unsubscribeDocente();
+            docenteActualUser = null;
+            docenteDataGlobal = null;
+            localStorage.removeItem('cecyteq_docente_actual');
+            cambiarVistaAuth('vistaLogin');
+        }
+
+        async function recuperarContrasena() {
+            let user = document.getElementById('recUser').value.trim();
+            let newPass = document.getElementById('recNewPass').value.trim();
+            if (!user || !newPass) { mostrarAlertaCustom("Campos Vacíos", "Completa los campos para continuar."); return; }
+
+            try {
+                const docRef = window.FB_doc(window.FB_db, "docentes", user);
+                const docSnap = await window.FB_getDoc(docRef);
+                if (docSnap.exists()) {
+                    await window.FB_updateDoc(docRef, { pass: newPass });
+                    mostrarAlertaCustom("¡Éxito!", "✅ Contraseña actualizada correctamente.");
+                    cambiarVistaAuth('vistaLogin');
+                } else { mostrarAlertaCustom("No encontrado", "❌ Usuario no encontrado en la nube."); }
+            } catch(e) { mostrarAlertaCustom("Error", "Ocurrió un error al procesar."); }
+        }
+
+        function irAInicio() {
+            if (!docenteDataGlobal) { cambiarVistaAuth('vistaLogin'); return; }
+            document.getElementById('tituloBienvenidaDocente').innerText = `Portal de ${docenteDataGlobal.nombre}`;
+            grupoActualId = null;
+            actualizarLogoPortalUI();
+            renderizarGrupos(docenteDataGlobal.grupos || []);
+            cambiarVista('vistaInicio');
+        }
+
+        function toggleMenuOpciones() {
+            document.getElementById('menuAccionesGrupo').classList.toggle('oculto');
+            reproducirSonido('click');
+        }
+
+        function toggleSeccion(idSeccion) {
+            let seccion = document.getElementById(idSeccion);
+            let estado = seccion.classList.contains('active');
+            document.querySelectorAll('.seccion-colapsable').forEach(s => s.classList.remove('active'));
+            if (!estado) seccion.classList.add('active');
+            reproducirSonido('click');
+        }
+
+        async function abrirGrupo(id) {
+            grupoActualId = id;
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === id);
+            if (!grupo) return;
+
+            if (!grupo.parciales) {
+                grupo.parciales = {
+                    "1er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
+                    "2do Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
+                    "3er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} }
+                };
+            }
+
+            document.getElementById('tituloGrupoActivo').innerText = `Grupo: ${grupo.nombre}`;
+            document.getElementById('selectParcialActivo').value = "1er Parcial";
+            sincronizarInputsPonderacionUI();
+            actualizarEstadoCandadoUI(grupo);
+            renderizarTablaAlumnos();
+            reproducirSonido('click');
+            cambiarVista('vistaGrupo');
+        }
+
+        function actualizarEstadoCandadoUI(grupo) {
+            const iconoCandado = document.getElementById('iconoCandado');
+            const textoCandado = document.getElementById('textoCandado');
+            const btnCandado = document.getElementById('btnCandadoGrupo');
+            if (!iconoCandado || !textoCandado || !btnCandado) return;
+
+            if (grupo.bloqueado) {
+                iconoCandado.innerText = "🔒";
+                textoCandado.innerText = "Bloqueado";
+                btnCandado.style.borderColor = "var(--danger-red)";
+                btnCandado.style.color = "var(--danger-red)";
+                btnCandado.style.background = "#fee2e2";
+            } else {
+                iconoCandado.innerText = "🔓";
+                textoCandado.innerText = "Abierto";
+                btnCandado.style.borderColor = "#86efac";
+                btnCandado.style.color = "#166534";
+                btnCandado.style.background = "var(--card-bg)";
+            }
+        }
+
+        function alternarCandadoGrupo() {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (!grupo) return;
+            grupo.bloqueado = !grupo.bloqueado;
+            guardarYRenderizar();
+            actualizarEstadoCandadoUI(grupo);
+            sincronizarInputsPonderacionUI();
+            reproducirSonido('click');
+        }
+
+        function actualizarLogoPortalUI() {
+            let imgElem = document.getElementById('imgLogoPortal');
+            let placeholder = document.getElementById('placeholderLogoPortal');
+            if (docenteDataGlobal.logo) {
+                imgElem.src = docenteDataGlobal.logo;
+                imgElem.style.display = 'block';
+                placeholder.style.display = 'none';
+            } else {
+                imgElem.style.display = 'none';
+                placeholder.style.display = 'flex';
+            }
+        }
+
+        function dispararCargaLogoPortal() { document.getElementById('inputLogoPortal').click(); }
+        async function cargarLogoPortal(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                docenteDataGlobal.logo = evt.target.result;
+                await guardarDocenteEnFirebase();
+                actualizarLogoPortalUI();
+                renderizarGrupos(docenteDataGlobal.grupos);
+                reproducirSonido('exito');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function obtenerParcialActualObj() {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (!grupo) return null;
+            let pKey = document.getElementById('selectParcialActivo').value;
+            if (!grupo.parciales[pKey]) {
+                grupo.parciales[pKey] = { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} };
+            }
+            let p = grupo.parciales[pKey];
+            if (!p.columnasExtra) p.columnasExtra = [];
+            if (!p.tareas) p.tareas = [];
+            if (!p.calificaciones) p.calificaciones = {};
+            return p;
+        }
+
+        function sincronizarInputsPonderacionUI() {
+            let pData = obtenerParcialActualObj();
+            if (!pData) return;
+            document.getElementById('inputMetaFirmas').value = pData.metaFirmas || 10;
+            document.getElementById('inputPorcentajeAct').value = pData.pAct;
+            document.getElementById('inputPorcentajeExam').value = pData.pExam;
+            document.getElementById('inputMetaExamen').value = pData.metaExamen || 10;
+
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            let bloqueado = grupo && grupo.bloqueado;
+
+            let htmlExtra = "<b>Columnas extra activas:</b> ";
+            if (pData.columnasExtra && pData.columnasExtra.length > 0) {
+                htmlExtra += pData.columnasExtra.map(c => `${c.nombre} (${c.peso}% | Meta: ${c.metaPts || 10}) ${bloqueado ? '' : `<button style="color:var(--danger-red);background:none;border:none;cursor:pointer;font-weight:bold;" onclick="eliminarColumnaExtra('${c.id}')">❌</button>`}`).join(" | ");
+            } else {
+                htmlExtra += "Ninguna.";
+            }
+            let containerExtra = document.getElementById('listaColumnasExtraContainer');
+            if (containerExtra) containerExtra.innerHTML = htmlExtra;
+        }
+
+        function cambiarParcialGrupo() {
+            sincronizarInputsPonderacionUI();
+            renderizarTablaAlumnos();
+            reproducirSonido('click');
+        }
+
+        async function guardarPonderaciones() {
+            let pData = obtenerParcialActualObj();
+            if (!pData) return;
+            pData.metaFirmas = Number(document.getElementById('inputMetaFirmas').value) || 10;
+            pData.pAct = Number(document.getElementById('inputPorcentajeAct').value) || 0;
+            pData.pExam = Number(document.getElementById('inputPorcentajeExam').value) || 0;
+            pData.metaExamen = Number(document.getElementById('inputMetaExamen').value) || 10;
+            await guardarYRenderizar();
+        }
+
+        async function agregarColumnaExtra() {
+            let pData = obtenerParcialActualObj();
+            let nombre = document.getElementById('inputNombreColExtra').value.trim().toUpperCase();
+            let peso = Number(document.getElementById('inputPorcentajeColExtra').value) || 0;
+            let metaPts = Number(document.getElementById('inputMetaColExtra').value) || 10;
+
+            if (!nombre) { mostrarAlertaCustom("Aviso", "Escribe el nombre de la columna extra."); return; }
+
+            let idCol = 'col_' + Date.now();
+            if (!pData.columnasExtra) pData.columnasExtra = [];
+            pData.columnasExtra.push({ id: idCol, nombre: nombre, peso: peso, metaPts: metaPts });
+
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (grupo && grupo.alumnos) {
+                grupo.alumnos.forEach(a => {
+                    if (!pData.calificaciones[a.id]) pData.calificaciones[a.id] = { firmas: 0, examen: 0, tareasStatus: {}, extrasStatus: {}, califFinal: 0 };
+                    if (!pData.calificaciones[a.id].extrasStatus) pData.calificaciones[a.id].extrasStatus = {};
+                    pData.calificaciones[a.id].extrasStatus[idCol] = 0;
+                });
+            }
+
+            document.getElementById('inputNombreColExtra').value = '';
+            document.getElementById('inputPorcentajeColExtra').value = '';
+            document.getElementById('inputMetaColExtra').value = '';
+            sincronizarInputsPonderacionUI();
+            await guardarYRenderizar();
+            reproducirSonido('exito');
+        }
+
+        async function eliminarColumnaExtra(idCol) {
+            let pData = obtenerParcialActualObj();
+            pData.columnasExtra = pData.columnasExtra.filter(c => c.id !== idCol);
+            sincronizarInputsPonderacionUI();
+            await guardarYRenderizar();
+            reproducirSonido('click');
+        }
+
+        async function guardarYRenderizar() {
+            await guardarDocenteEnFirebase();
+            renderizarTablaAlumnos();
+        }
+
+        async function agregarAlumnoGrupo() {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (grupo && grupo.bloqueado) { mostrarAlertaCustom("Grupo Bloqueado", "⚠️ El grupo está bloqueado."); return; }
+
+            let nombreInput = document.getElementById('inputNombreAlumno');
+            let estadoInput = document.getElementById('selectEstadoInscripcion').value;
+            let nombre = nombreInput.value.trim().toUpperCase();
+
+            if (!nombre) { mostrarAlertaCustom("Aviso", "Escribe el nombre del alumno."); return; }
+
+            if (!grupo.alumnos) grupo.alumnos = [];
+            if (grupo.alumnos.some(a => a.nombre === nombre)) { mostrarAlertaCustom("Atención", "⚠️ Este alumno ya está registrado en el grupo."); return; }
+
+            let nuevoAlumnoId = Date.now();
+            grupo.alumnos.push({ id: nuevoAlumnoId, nombre: nombre, estado: estadoInput });
+
+            if (grupo.parciales) {
+                Object.keys(grupo.parciales).forEach(pKey => {
+                    let pData = grupo.parciales[pKey];
+                    if (!pData.calificaciones) pData.calificaciones = {};
+                    let tStatus = {};
+                    if (pData.tareas) pData.tareas.forEach(t => { tStatus[t.id] = false; });
+                    let eStatus = {};
+                    if (pData.columnasExtra) pData.columnasExtra.forEach(c => { eStatus[c.id] = 0; });
+
+                    pData.calificaciones[nuevoAlumnoId] = {
+                        firmas: 0, examen: 0, tareasStatus: tStatus, extrasStatus: eStatus, califFinal: 0
+                    };
+                });
+            }
+
+            nombreInput.value = '';
+            await guardarYRenderizar();
+            reproducirSonido('exito');
+            mostrarAlertaCustom("¡Inscrito!", `✅ Alumno "${nombre}" inscrito con éxito.`);
+        }
+
+        async function agregarTareaGrupo() {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (grupo && grupo.bloqueado) { mostrarAlertaCustom("Bloqueado", "⚠️ Grupo bloqueado."); return; }
+
+            let pData = obtenerParcialActualObj();
+            let inputT = document.getElementById('inputNombreTarea');
+            let nombreTarea = inputT.value.trim().toUpperCase();
+
+            if (!nombreTarea) { mostrarAlertaCustom("Aviso", "Escribe el nombre de la actividad."); return; }
+
+            let nuevaId = 't_' + Date.now();
+            if (!pData.tareas) pData.tareas = [];
+            pData.tareas.push({ id: nuevaId, nombre: nombreTarea });
+
+            if (grupo.alumnos) {
+                grupo.alumnos.forEach(a => {
+                    if (!pData.calificaciones[a.id]) pData.calificaciones[a.id] = { firmas: 0, examen: 0, tareasStatus: {}, extrasStatus: {}, califFinal: 0 };
+                    if (!pData.calificaciones[a.id].tareasStatus) pData.calificaciones[a.id].tareasStatus = {};
+                    pData.calificaciones[a.id].tareasStatus[nuevaId] = false;
+                });
+            }
+
+            inputT.value = '';
+            await guardarYRenderizar();
+            reproducirSonido('exito');
+            mostrarAlertaCustom("¡Publicada!", `✅ Actividad "${nombreTarea}" publicada.`);
+        }
+
+        async function eliminarTareaGrupo(tareaId) {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (grupo && grupo.bloqueado) { mostrarAlertaCustom("Bloqueado", "⚠️ Grupo bloqueado."); return; }
+            if (!confirm("¿Eliminar esta actividad de este parcial?")) return;
+
+            let pData = obtenerParcialActualObj();
+            pData.tareas = pData.tareas.filter(t => t.id !== tareaId);
+
+            if (grupo.alumnos) {
+                grupo.alumnos.forEach(a => {
+                    let c = pData.calificaciones[a.id];
+                    if (c && c.tareasStatus) {
+                        if (c.tareasStatus[tareaId]) {
+                            c.firmas -= 1;
+                            if (c.firmas < 0) c.firmas = 0;
+                        }
+                        delete c.tareasStatus[tareaId];
+                    }
+                });
+            }
+            await guardarYRenderizar();
+            reproducirSonido('click');
+        }
+
+        async function eliminarAlumno(alumnoId) {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (grupo && grupo.bloqueado) { mostrarAlertaCustom("Bloqueado", "⚠️ Grupo bloqueado."); return; }
+            if (!confirm("¿Estás seguro de eliminar este alumno del grupo?")) return;
+
+            grupo.alumnos = grupo.alumnos.filter(a => a.id !== alumnoId);
+            if (grupo.parciales) {
+                Object.keys(grupo.parciales).forEach(pKey => {
+                    if (grupo.parciales[pKey].calificaciones) {
+                        delete grupo.parciales[pKey].calificaciones[alumnoId];
+                    }
+                });
+            }
+            await guardarYRenderizar();
+            reproducirSonido('click');
+        }
+
+        async function cambiarEstadoRecuperacion(alumnoId) {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (grupo && grupo.bloqueado) return;
+            let alumno = grupo.alumnos.find(a => a.id === alumnoId);
+            if (!alumno) return;
+
+            if (alumno.estado === 'Regular') alumno.estado = 'Recuperación';
+            else if (alumno.estado === 'Recuperación') alumno.estado = 'Recursamiento';
+            else alumno.estado = 'Regular';
+
+            await guardarYRenderizar();
+            reproducirSonido('click');
+        }
+
+        async function cambiarFirmaAlumno(alumnoId, delta) {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (grupo && grupo.bloqueado) return;
+            let pData = obtenerParcialActualObj();
+            if (!pData.calificaciones[alumnoId]) {
+                pData.calificaciones[alumnoId] = { firmas: 0, examen: 0, tareasStatus: {}, extrasStatus: {}, califFinal: 0 };
+            }
+            let c = pData.calificaciones[alumnoId];
+            c.firmas += delta;
+            if (c.firmas < 0) c.firmas = 0;
+
+            calcularCalificacionAlumno(c, pData);
+            await guardarYRenderizar();
+            reproducirSonido('click');
+        }
+
+        async function actualizarExamenAlumno(alumnoId, val) {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (grupo && grupo.bloqueado) return;
+            let pData = obtenerParcialActualObj();
+            if (!pData.calificaciones[alumnoId]) {
+                pData.calificaciones[alumnoId] = { firmas: 0, examen: 0, tareasStatus: {}, extrasStatus: {}, califFinal: 0 };
+            }
+            let c = pData.calificaciones[alumnoId];
+            c.examen = Number(val) || 0;
+
+            calcularCalificacionAlumno(c, pData);
+            await guardarYRenderizar();
+        }
+
+        async function cambiarEstadoTarea(alumnoId, tareaId) {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (grupo && grupo.bloqueado) return;
+            let pData = obtenerParcialActualObj();
+            if (!pData.calificaciones[alumnoId]) {
+                pData.calificaciones[alumnoId] = { firmas: 0, examen: 0, tareasStatus: {}, extrasStatus: {}, califFinal: 0 };
+            }
+            let c = pData.calificaciones[alumnoId];
+            if (!c.tareasStatus) c.tareasStatus = {};
+
+            let estadoAnterior = c.tareasStatus[tareaId];
+            c.tareasStatus[tareaId] = !estadoAnterior;
+
+            if (c.tareasStatus[tareaId]) c.firmas += 1;
+            else {
+                c.firmas -= 1;
+                if (c.firmas < 0) c.firmas = 0;
+            }
+
+            calcularCalificacionAlumno(c, pData);
+            await guardarYRenderizar();
+            reproducirSonido('exito');
+        }
+
+        function calcularCalificacionAlumno(c, parcialData) {
+            let metaFirmas = parcialData.metaFirmas || 10;
+            let pAct = parcialData.pAct !== undefined ? parcialData.pAct : 40;
+            let pExam = parcialData.pExam !== undefined ? parcialData.pExam : 40;
+            let metaExamen = parcialData.metaExamen || 10;
+
+            let puntajeFirmas = (c.firmas / metaFirmas) * 10;
+            if (puntajeFirmas > 10) puntajeFirmas = 10;
+            let califActividades = puntajeFirmas * (pAct / 100);
+
+            let puntajeExamenNorm = (c.examen / metaExamen) * 10;
+            if (puntajeExamenNorm > 10) puntajeExamenNorm = 10;
+            let califExamenFinal = puntajeExamenNorm * (pExam / 100);
+
+            let sumaExtras = 0;
+            if (parcialData.columnasExtra && parcialData.columnasExtra.length > 0) {
+                if (!c.extrasStatus) c.extrasStatus = {};
+                parcialData.columnasExtra.forEach(col => {
+                    let valCol = Number(c.extrasStatus[col.id]) || 0;
+                    let metaCol = col.metaPts || 10;
+                    let puntajeCol = (valCol / metaCol) * (col.peso / 100) * 10;
+                    sumaExtras += puntajeCol;
+                });
+            }
+
+            let final = (califActividades + califExamenFinal + sumaExtras);
+            if (final > 10) final = 10;
+            c.califFinal = Number(final.toFixed(1));
+        }
+
+        function renderizarTablaAlumnos() {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (!grupo) return;
+            let pData = obtenerParcialActualObj();
+            let bloqueado = grupo.bloqueado;
+            const container = document.getElementById('tablaAlumnosContainer');
+            document.getElementById('lblParcialActualTabla').innerText = document.getElementById('selectParcialActivo').value;
+
+            if (!grupo.alumnos || grupo.alumnos.length === 0) {
+                container.innerHTML = `<p style="text-align: center; padding: 15px; color: var(--text-gray);">No hay alumnos inscritos en este grupo.</p>`;
+                return;
+            }
+
+            let filtroTexto = document.getElementById('inputBuscadorAlumnoTabla') ? document.getElementById('inputBuscadorAlumnoTabla').value.toUpperCase() : "";
+            let alumnosFiltrados = grupo.alumnos.filter(a => a.nombre.includes(filtroTexto));
+
+            let html = `<table><thead><tr><th>#</th><th>Nombre Completo</th>`;
+            if (pData.tareas) {
+                pData.tareas.forEach((t, i) => html += `<th>ACT ${i+1}<br><small style="font-weight:normal;">${t.nombre}</small> ${bloqueado ? '' : `<button style="background:none;border:none;color:var(--danger-red);cursor:pointer;font-size:0.75rem;" onclick="eliminarTareaGrupo('${t.id}')">❌</button>`}</th>`);
+            }
+            if (pData.columnasExtra) {
+                pData.columnasExtra.forEach(col => html += `<th>${col.nombre} (${col.peso}%)</th>`);
+            }
+            html += `<th>Firmas</th><th>Examen</th><th>Final</th><th>Acción</th></tr></thead><tbody>`;
+
+            alumnosFiltrados.forEach((a, i) => {
+                if (!pData.calificaciones[a.id]) pData.calificaciones[a.id] = { firmas: 0, examen: 0, tareasStatus: {}, extrasStatus: {}, califFinal: 0 };
+                let c = pData.calificaciones[a.id];
+                calcularCalificacionAlumno(c, pData);
+
+                let badgeClass = "badge-regular";
+                if (a.estado === 'Recuperación') badgeClass = "badge-recuperacion";
+                if (a.estado === 'Recursamiento') badgeClass = "badge-recursamiento";
+
+                html += `<tr><td>${i+1}</td>
+                    <td>
+                        <b style="font-size:0.88rem;">${a.nombre}</b><br>
+                        <span class="badge-estado ${badgeClass}" onclick="cambiarEstadoRecuperacion(${a.id})" title="Click para cambiar estado">${a.estado || 'Regular'}</span>
+                    </td>`;
+
+                if (pData.tareas) {
+                    pData.tareas.forEach(t => {
+                        let checked = c.tareasStatus && c.tareasStatus[t.id] ? "checked" : "";
+                        html += `<td><input type="checkbox" ${checked} ${bloqueado ? 'disabled' : ''} onchange="cambiarEstadoTarea(${a.id}, '${t.id}')" style="width:16px;height:16px;cursor:pointer;"></td>`;
+                    });
+                }
+                if (pData.columnasExtra) {
+                    pData.columnasExtra.forEach(col => {
+                        let valExtra = c.extrasStatus && c.extrasStatus[col.id] !== undefined ? c.extrasStatus[col.id] : 0;
+                        html += `<td>${valExtra}</td>`;
+                    });
+                }
+
+                html += `
+                    <td>
+                        <div style="display:flex;align-items:center;gap:4px;">
+                            ${bloqueado ? '' : `<button class="btn-regresar" style="padding: 2px 6px;" onclick="cambiarFirmaAlumno(${a.id}, -1)">-</button>`}
+                            <span style="font-weight: bold; min-width: 16px; text-align:center;">${c.firmas}</span>
+                            ${bloqueado ? '' : `<button class="btn-regresar" style="padding: 2px 6px;" onclick="cambiarFirmaAlumno(${a.id}, 1)">+</button>`}
+                        </div>
+                    </td>
+                    <td>
+                        <input type="number" value="${c.examen || 0}" ${bloqueado ? 'disabled' : ''} style="width: 55px; padding: 4px; text-align:center;" oninput="actualizarExamenAlumno(${a.id}, this.value)">
+                    </td>
+                    <td><b style="color: ${c.califFinal >= 6 ? 'var(--cecyteq-green)' : 'var(--danger-red)'}; font-size:0.95rem;">${c.califFinal || 0}</b></td>
+                    <td>${bloqueado ? '-' : `<button class="btn-regresar" style="padding: 4px 8px; color: var(--danger-red); background:#fee2e2;" onclick="eliminarAlumno(${a.id})" title="Eliminar alumno">🗑️</button>`}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        function renderizarGrupos(grupos) {
+            const grid = document.getElementById('gridGrupos');
+            if (grupos.length === 0) {
+                grid.innerHTML = `<p style="color: var(--text-gray); grid-column: span 2; text-align: center; padding: 25px;">No hay grupos registrados.</p>`;
+                return;
+            }
+            let html = '';
+            grupos.forEach(g => {
+                let total = g.alumnos ? g.alumnos.length : 0;
+                let estado = g.bloqueado ? "🔒 Bloqueado" : "🔓 Abierto";
+                let logoHtml = docenteDataGlobal.logo ? `<img src="${docenteDataGlobal.logo}" class="logo-card-preview">` : "📁";
+                html += `
+                    <div class="group-card">
+                        <div class="group-info" onclick="abrirGrupo(${g.id})">
+                            <h3>${logoHtml} ${g.nombre}</h3>
+                            <p style="font-size: 0.85rem; color: var(--text-gray);">👥 Alumnos: <b>${total}</b></p>
+                            <p style="font-size: 0.85rem; color: var(--text-gray);">Estado: <b>${estado}</b></p>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-entrar" onclick="abrirGrupo(${g.id})">Entrar →</button>
+                            <button class="btn-eliminar-grupo" onclick="eliminarGrupo(${g.id}, event)">Eliminar</button>
+                        </div>
+                    </div>
+                `;
+            });
+            grid.innerHTML = html;
+        }
+
+        async function promptCrearGrupo() {
+            let nombre = prompt("Nombre del nuevo grupo (EJ: 4TPROG-AM):");
+            if (!nombre) return;
+            let nuevoG = {
+                id: Date.now(),
+                nombre: nombre.trim().toUpperCase(),
+                bloqueado: false,
+                alumnos: [],
+                parciales: {
+                    "1er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
+                    "2do Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
+                    "3er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} }
+                }
+            };
+            docenteDataGlobal.grupos.push(nuevoG);
+            await guardarDocenteEnFirebase();
+            renderizarGrupos(docenteDataGlobal.grupos);
+            reproducirSonido('exito');
+        }
+
+        async function eliminarGrupo(id, e) {
+            e.stopPropagation();
+            if (confirm("¿Estás seguro de eliminar este grupo?")) {
+                docenteDataGlobal.grupos = docenteDataGlobal.grupos.filter(g => g.id !== id);
+                await guardarDocenteEnFirebase();
+                renderizarGrupos(docenteDataGlobal.grupos);
+                reproducirSonido('click');
+            }
+        }
+
+        function dispararImportacionGrupo() { document.getElementById('csvGrupoInput').click(); }
+        async function importarArchivoGeneral(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            let nombreSugerido = file.name.replace(/\.[^/.]+$/, "").toUpperCase();
+            let nombreGrupo = prompt("Nombre asignado para este grupo:", nombreSugerido);
+            if (!nombreGrupo) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                let alumnosImportados = [];
+                let nombresVistos = new Set();
+
+                rows.forEach((row, i) => {
+                    if (row && row.length > 0) {
+                        let posibleNombre = "";
+                        row.forEach(cell => {
+                            if (cell && String(cell).trim().length > 3 && isNaN(String(cell))) {
+                                if (!posibleNombre) posibleNombre = String(cell).trim();
+                            }
+                        });
+                        if (posibleNombre && !posibleNombre.toLowerCase().includes("nombre")) {
+                            let limpio = posibleNombre.toUpperCase();
+                            if (!nombresVistos.has(limpio)) {
+                                nombresVistos.add(limpio);
+                                alumnosImportados.push({ id: Date.now() + i, nombre: limpio, estado: "Regular" });
+                            }
+                        }
+                    }
+                });
+
+                let nuevoG = {
+                    id: Date.now(),
+                    nombre: nombreGrupo.trim().toUpperCase(),
+                    bloqueado: false,
+                    alumnos: alumnosImportados,
+                    parciales: {
+                        "1er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
+                        "2do Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} },
+                        "3er Parcial": { tareas: [], columnasExtra: [], metaFirmas: 10, pAct: 40, pExam: 40, metaExamen: 10, calificaciones: {} }
+                    }
+                };
+                docenteDataGlobal.grupos.push(nuevoG);
+                await guardarDocenteEnFirebase();
+                renderizarGrupos(docenteDataGlobal.grupos);
+                reproducirSonido('exito');
+                mostrarAlertaCustom("Importación Exitosa", `¡Grupo importado (${alumnosImportados.length} alumnos)!`);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function abrirEscanearQR() {
+            document.getElementById('modalQR').style.display = 'flex';
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 220 } },
+                (decodedText) => { cerrarEscanearQR(); procesarQRScanned(decodedText); },
+                (err) => {}
+            ).catch(() => { mostrarAlertaCustom("Error", "No se pudo abrir la cámara."); cerrarEscanearQR(); });
+        }
+        function cerrarEscanearQR() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => { document.getElementById('modalQR').style.display = 'none'; }).catch(() => { document.getElementById('modalQR').style.display = 'none'; });
+            } else { document.getElementById('modalQR').style.display = 'none'; }
+        }
+
+        async function procesarQRScanned(codigo) {
+            try {
+                let data = JSON.parse(codigo);
+                let grupo = docenteDataGlobal.grupos.find(g => g.id == data.grupoId);
+                if (!grupo) { mostrarAlertaCustom("Error", "⚠️ Grupo no encontrado."); return; }
+                let pData = grupo.parciales[data.parcial];
+                let alumno = grupo.alumnos.find(a => a.id == data.id);
+                if (!alumno) { mostrarAlertaCustom("Error", "⚠️ Alumno no encontrado."); return; }
+
+                if (!pData.calificaciones[alumno.id]) {
+                    pData.calificaciones[alumno.id] = { firmas: 0, examen: 0, tareasStatus: {}, extrasStatus: {}, califFinal: 0 };
+                }
+                let c = pData.calificaciones[alumno.id];
+                if (data.actividadId && c.tareasStatus) {
+                    c.tareasStatus[data.actividadId] = true;
+                }
+                c.firmas += 1;
+                await guardarYRenderizar();
+                reproducirSonido('exito');
+                mostrarAlertaCustom("¡Firma Registrada!", `✅ Firma registrada con éxito a: ${alumno.nombre}`);
+            } catch(e) { mostrarAlertaCustom("Error", "⚠️ Código QR inválido."); }
+        }
+
+        function filtrarGrupos() {
+            let texto = document.getElementById('inputBuscadorGrupos').value.toUpperCase();
+            let filtrados = docenteDataGlobal.grupos.filter(g => g.nombre.includes(texto));
+            renderizarGrupos(filtrados);
+        }
+
+        function verAlumnosRecuperacion() {
+            let grupoObj = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (!grupoObj || !grupoObj.alumnos) return;
+            let filtrados = grupoObj.alumnos.filter(a => a.estado && a.estado !== 'Regular');
+            if (filtrados.length === 0) { mostrarAlertaCustom("Información", "No hay alumnos en recuperación o recursamiento."); return; }
+            let msg = "";
+            filtrados.forEach(a => { msg += `• ${a.nombre} (${a.estado})\n`; });
+            mostrarAlertaCustom("Alumnos en Recuperación", msg);
+        }
+
+        function exportarExcelGrupo() {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (!grupo) return;
+            let pData = obtenerParcialActualObj();
+            let datos = grupo.alumnos.map((a, i) => {
+                let c = pData.calificaciones[a.id] || { firmas: 0, examen: 0, califFinal: 0 };
+                return { "No.": i + 1, "Nombre": a.nombre, "Estado": a.estado || "Regular", "Firmas": c.firmas, "Examen": c.examen, "Calificación Final": c.califFinal || 0 };
+            });
+            const ws = XLSX.utils.json_to_sheet(datos);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Calificaciones");
+            XLSX.writeFile(wb, `${grupo.nombre}_Calificaciones.xlsx`);
+            reproducirSonido('exito');
+        }
+
+        function mostrarEstadisticasGrupo() {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (!grupo || !grupo.alumnos || grupo.alumnos.length === 0) {
+                mostrarAlertaCustom("Aviso", "No hay alumnos suficientes para generar estadísticas.");
+                return;
+            }
+            let pData = obtenerParcialActualObj();
+            let totalAlumnos = grupo.alumnos.length;
+            let aprobados = 0;
+            let sumaCalif = 0;
+
+            grupo.alumnos.forEach(a => {
+                let c = pData.calificaciones[a.id] || { califFinal: 0 };
+                sumaCalif += (c.califFinal || 0);
+                if ((c.califFinal || 0) >= 6) aprobados++;
+            });
+
+            let promedioGeneral = (sumaCalif / totalAlumnos).toFixed(1);
+            let porcentajeAprobacion = ((aprobados / totalAlumnos) * 100).toFixed(1);
+
+            let actividadMenosEntregada = "Ninguna";
+            if (pData.tareas && pData.tareas.length > 0) {
+                let minEntregas = Infinity;
+                pData.tareas.forEach(t => {
+                    let entregas = 0;
+                    grupo.alumnos.forEach(a => {
+                        let c = pData.calificaciones[a.id];
+                        if (c && c.tareasStatus && c.tareasStatus[t.id]) entregas++;
+                    });
+                    if (entregas < minEntregas) {
+                        minEntregas = entregas;
+                        actividadMenosEntregada = `${t.nombre} (${entregas} entregas)`;
+                    }
+                });
+            }
+
+            mostrarAlertaCustom(`📈 Estadísticas (${document.getElementById('selectParcialActivo').value})`,
+                  `• Total Alumnos: ${totalAlumnos}\n` +
+                  `• Promedio General: ${promedioGeneral}\n` +
+                  `• Aprobados: ${aprobados} (${porcentajeAprobacion}%)\n` +
+                  `• Reprobados: ${totalAlumnos - aprobados}\n` +
+                  `• Actividad Menos Entregada:\n  ${actividadMenosEntregada}`);
+        }
+
+        function analizarConIA() {
+            let grupo = docenteDataGlobal.grupos.find(g => g.id === grupoActualId);
+            if (!grupo || !grupo.alumnos || grupo.alumnos.length === 0) {
+                mostrarAlertaCustom("Asistente IA", "🤖 No hay suficientes datos en el grupo para analizar.");
+                return;
+            }
+            let pData = obtenerParcialActualObj();
+            let enRiesgo = 0;
+            grupo.alumnos.forEach(a => {
+                let c = pData.calificaciones[a.id] || { califFinal: 0 };
+                if ((c.califFinal || 0) < 6) enRiesgo++;
+            });
+
+            mostrarAlertaCustom("🤖 Reporte Asistente IA",
+                  `• Diagnóstico: Se detectaron ${enRiesgo} alumnos con calificación menor a 6.0 en este parcial.\n\n` +
+                  `• Recomendación: Se sugiere programar tutorías o revisar las actividades con menor porcentaje de entrega.\n\n` +
+                  `• Resguardo: Sincronizado en tiempo real con Firebase.`);
+        }
+    </script>
+</body>
+</html>

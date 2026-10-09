@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Código QR - CECYTEQ</title>
+    <!-- Librería qrcode.js para generar códigos QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Firebase SDK v10 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAMSdJbBCh7za9CSV0oKSL9QLE8OyyQhJs",
+            authDomain: "cecyqr-pro.firebaseapp.com",
+            projectId: "cecyqr-pro",
+            storageBucket: "cecyqr-pro.firebasestorage.app",
+            messagingSenderId: "35266770164",
+            appId: "1:35266770164:web:b92bd883c3bd3a26941aa1",
+            measurementId: "G-8R0R1377Y5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.FB_db = db;
+        window.FB_collection = collection;
+        window.FB_getDocs = getDocs;
+        window.FB_doc = doc;
+        window.FB_getDoc = getDoc;
+
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+    <style>
+        :root {
+            --bg-light: #f1f5f9;
+            --card-bg: #ffffff;
+            --cecyteq-green: #059669;
+            --cecyteq-green-hover: #047857;
+            --cecyteq-orange: #f97316;
+            --cecyteq-orange-hover: #ea580c;
+            --cecyteq-blue: #2563eb;
+            --text-main: #0f172a;
+            --text-gray: #475569;
+            --border-color: #cbd5e1;
+            --input-bg: #f8fafc;
+            --danger-red: #dc2626;
+        }
+
+        /* MODO OSCURO MEJORADO Y ELEGANTE */
+        body.dark-mode {
+            --bg-light: #0b0f19;
+            --card-bg: #131c2e;
+            --text-main: #f1f5f9;
+            --text-gray: #94a3b8;
+            --border-color: #22324f;
+            --input-bg: #1a263d;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease; }
+        body { background-color: var(--bg-light); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding: 15px; align-items: center; justify-content: flex-start; }
+        
+        .gen-container { max-width: 440px; width: 100%; background: var(--card-bg); padding: 22px; border-radius: 20px; box-shadow: 0 15px 35px rgba(5, 150, 105, 0.12); border: 2px solid var(--cecyteq-green); margin-top: 10px; margin-bottom: 20px; }
+        .gen-header { text-align: center; margin-bottom: 20px; position: relative; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        .gen-header h1 { color: var(--cecyteq-green); font-size: 1.4rem; font-weight: 800; margin-top: 5px; }
+        .gen-header p { color: var(--text-gray); font-size: 0.8rem; }
+        
+        .top-tools { position: absolute; right: 0; top: 0; display: flex; gap: 5px; }
+        .btn-tool { background: var(--input-bg); border: 1.5px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; }
+
+        /* TARJETAS DE SELECCIÓN REDISEÑADAS */
+        .select-card-group { background: var(--input-bg); border: 2px solid var(--border-color); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; text-align: left; }
+        .select-card-group:focus-within { border-color: var(--cecyteq-green); box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
+        
+        .select-card-label { display: block; font-size: 0.78rem; font-weight: 800; color: var(--cecyteq-green); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+        .select-card-group select { width: 100%; padding: 6px 2px; border: none; font-size: 0.9rem; background: transparent; color: var(--text-main); outline: none; font-weight: 700; cursor: pointer; }
+
+        /* FILA COMPACTA PARA EL PARCIAL */
+        .row-parcial-container { display: flex; align-items: center; justify-content: space-between; background: var(--input-bg); border: 2px solid var(--border-color); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
+        .row-parcial-container:focus-within { border-color: var(--cecyteq-green); }
+        .row-parcial-label { font-size: 0.78rem; font-weight: 800; color: var(--cecyteq-green); text-transform: uppercase; }
+        .select-parcial-small { padding: 5px 10px; border: 1.5px solid var(--cecyteq-green); border-radius: 8px; font-size: 0.85rem; font-weight: 800; color: var(--cecyteq-green); background: var(--card-bg); outline: none; cursor: pointer; }
+
+        .btn-generar { background: linear-gradient(135deg, var(--cecyteq-orange), var(--cecyteq-orange-hover)); color: white; border: none; padding: 13px; border-radius: 12px; font-size: 0.95rem; font-weight: 800; cursor: pointer; width: 100%; box-shadow: 0 6px 15px rgba(249, 115, 22, 0.25); margin-top: 4px; }
+        .btn-generar:active { transform: scale(0.98); }
+        
+        .row-extra-btns { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-sec-gen { flex: 1; background: var(--input-bg); border: 2px solid var(--border-color); color: var(--text-main); padding: 9px; border-radius: 10px; font-size: 0.85rem; font-weight: 800; cursor: pointer; text-align: center; }
+        .btn-sec-gen.tabla { border-color: #86efac; color: var(--cecyteq-green); background: rgba(5, 150, 105, 0.08); }
+        .btn-sec-gen.ia { border-color: #d8b4fe; color: #9333ea; background: rgba(147, 51, 234, 0.08); }
+
+        .qr-result-box { display: none; margin-top: 18px; padding: 16px; border: 2px dashed var(--cecyteq-green); border-radius: 14px; background: rgba(5, 150, 105, 0.04); text-align: center; }
+        #qrcode { display: flex; justify-content: center; margin: 10px 0; background: white; padding: 10px; border-radius: 10px; width: fit-content; margin-left: auto; margin-right: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        .btn-descargar { background: linear-gradient(135deg, var(--cecyteq-green), var(--cecyteq-green-hover)); color: white; border: none; padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 800; cursor: pointer; width: 100%; margin-top: 8px; }
+
+        /* MODALES PERSONALIZADOS */
+        .modal-custom { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); justify-content: center; align-items: center; z-index: 2000; padding: 15px; backdrop-filter: blur(4px); }
+        .modal-custom-content { background: var(--card-bg); padding: 22px; border-radius: 16px; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.3); border-top: 5px solid var(--cecyteq-green); max-height: 85vh; overflow-y: auto; }
+        .modal-custom-title { color: var(--cecyteq-green); font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; }
+        .modal-custom-body { color: var(--text-gray); font-size: 0.88rem; margin-bottom: 18px; line-height: 1.4; text-align: left; background: var(--input-bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .modal-custom-btn { background: linear-gradient(135deg, var(--cecyteq-green), var(--cecyteq-green-hover)); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 0.9rem; font-weight: 800; cursor: pointer; width: 100%; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.82rem; color: var(--text-main); }
+        th { background: rgba(5, 150, 105, 0.15); color: var(--cecyteq-green); font-weight: 800; }
+    </style>
+</head>
+<body>
+
+    <div class="gen-container">
+        <div class="gen-header">
+            <div class="top-tools">
+                <button class="btn-tool" onclick="toggleDarkMode()" title="Cambiar Modo">🌙</button>
+            </div>
+            <div style="font-size: 2rem; margin-bottom: 2px;">📱</div>
+            <h1>Generador de Código QR</h1>
+            <p>CECYTEQ • Plantel San Juan del Río</p>
+        </div>
+
+        <div class="select-card-group">
+            <label class="select-card-label">👨‍🏫 Selecciona al Docente</label>
+            <select id="selectDocente" onchange="cargarGruposDocente()">
+                <option value="">-- Seleccione Docente --</option>
+            </select>
+        </div>
+
+        <div class="select-card-group">
+            <label class="select-card-label">📁 Selecciona tu Grupo</label>
+            <select id="selectGrupo" onchange="cargarAlumnosYActividades()">
+                <option value="">-- Seleccione Grupo --</option>
+            </select>
+        </div>
+
+        <div class="select-card-group">
+            <label class="select-card-label">👤 Selecciona tu Nombre</label>
+            <select id="selectAlumno">
+                <option value="">-- Seleccione Alumno --</option>
+            </select>
+        </div>
+
+        <!-- SECCIÓN DE PARCIAL COMPACTA Y ESTILIZADA -->
+        <div class="row-parcial-container">
+            <span class="row-parcial-label">📊 Selecciona el Parcial</span>
+            <select id="selectParcial" class="select-parcial-small" onchange="actualizarListaActividades()">
+                <option value="1er Parcial">1er Parcial</option>
+                <option value="2do Parcial">2do Parcial</option>
+                <option value="3er Parcial">3er Parcial</option>
+            </select>
+        </div>
+
+        <div class="select-card-group">
+            <label class="select-card-label">📝 Selecciona la Actividad (Opcional)</label>
+            <select id="selectActividad">
+                <option value="">-- General / Sin Actividad Específica --</option>
+            </select>
+        </div>
+
+        <button class="btn-generar" onclick="generarQR()">⚡ Generar Mi Código QR</button>
+
+        <div class="row-extra-btns">
+            <button class="btn-sec-gen tabla" onclick="abrirModalTabla()">📊 Ver Tabla</button>
+            <button class="btn-sec-gen ia" onclick="abrirModalIA()">🤖 Usar IA</button>
+        </div>
+
+        <div id="qrResultBox" class="qr-result-box">
+            <p style="font-weight: 800; color: var(--cecyteq-green); margin-bottom: 6px;">¡Tu código QR está listo!</p>
+            <div id="qrcode"></div>
+            <button class="btn-descargar" onclick="descargarQR()">📥 Descargar Imagen QR</button>
+        </div>
+    </div>
+
+    <!-- MODALES PERSONALIZADOS -->
+    <div id="modalCustomAlert" class="modal-custom">
+        <div class="modal-custom-content">
+            <div style="font-size: 2rem; margin-bottom: 4px;">🔔</div>
+            <div id="modalCustomTitle" class="modal-custom-title">Aviso</div>
+            <div id="modalCustomText" class="modal-custom-body">Mensaje aquí</div>
+            <button class="modal-custom-btn" onclick="cerrarModalCustom()">Entendido</button>
+        </div>
+    </div>
+
+    <!-- MODAL TABLA DE CALIFICACIONES ALUMNO -->
+    <div id="modalTablaAlumno" class="modal-custom">
+        <div class="modal-custom-content" style="max-width: 480px;">
+            <div class="modal-custom-title">📋 Tus Calificaciones</div>
+            <div id="contenidoTablaAlumno" class="modal-custom-body" style="max-height: 300px; overflow-y: auto;">
+                Selecciona tu nombre y grupo primero para ver tu avance.
+            </div>
+            <button class="modal-custom-btn" onclick="cerrarModalTabla()">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        let docentesCache = {};
+        let docenteSeleccionadoObj = null;
+        let grupoSeleccionadoObj = null;
+        let qrInstance = null;
+
+        function reproducirSonido(tipo) {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (tipo === 'exito') {
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08);
+                    osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.16);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                } else {
+                    osc.frequency.setValueAtTime(350, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.08);
+                }
+            } catch(e) {}
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            let isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('cecyteq_gen_dark', isDark ? '1' : '0');
+            reproducirSonido('click');
+        }
+
+        if (localStorage.getItem('cecyteq_gen_dark') === '1') {
+            document.body.classList.add('dark-mode');
+        }
+
+        function mostrarAlertaCustom(titulo, mensaje) {
+            document.getElementById('modalCustomTitle').innerText = titulo;
+            document.getElementById('modalCustomText').innerText = mensaje;
+            document.getElementById('modalCustomAlert').style.display = 'flex';
+            reproducirSonido('exito');
+        }
+        function cerrarModalCustom() {
+            document.getElementById('modalCustomAlert').style.display = 'none';
+            reproducirSonido('click');
+        }
+
+        window.addEventListener('firebase-ready', async () => {
+            await cargarDocentesFirebase();
+        });
+
+        async function cargarDocentesFirebase() {
+            try {
+                const querySnapshot = await window.FB_getDocs(window.FB_collection(window.FB_db, "docentes"));
+                const selectDocente = document.getElementById('selectDocente');
+                selectDocente.innerHTML = '<option value="">-- Seleccione Docente --</option>';
+                docentesCache = {};
+
+                querySnapshot.forEach((docSnap) => {
+                    let data = docSnap.data();
+                    docentesCache[data.user] = data;
+                    let opt = document.createElement('option');
+                    opt.value = data.user;
+                    opt.innerText = data.nombre;
+                    selectDocente.appendChild(opt);
+                });
+            } catch(e) {
+                mostrarAlertaCustom("Error", "No se pudieron cargar los docentes desde la nube.");
+            }
+        }
+
+        function cargarGruposDocente() {
+            let userDocente = document.getElementById('selectDocente').value;
+            let selectGrupo = document.getElementById('selectGrupo');
+            selectGrupo.innerHTML = '<option value="">-- Seleccione Grupo --</option>';
+            document.getElementById('selectAlumno').innerHTML = '<option value="">-- Seleccione Alumno --</option>';
+            document.getElementById('selectActividad').innerHTML = '<option value="">-- General / Sin Actividad --</option>';
+
+            if (!userDocente || !docentesCache[userDocente]) return;
+            docenteSeleccionadoObj = docentesCache[userDocente];
+
+            if (docenteSeleccionadoObj.grupos) {
+                docenteSeleccionadoObj.grupos.forEach(g => {
+                    let opt = document.createElement('option');
+                    opt.value = g.id;
+                    opt.innerText = g.nombre;
+                    selectGrupo.appendChild(opt);
+                });
+            }
+            reproducirSonido('click');
+        }
+
+        function cargarAlumnosYActividades() {
+            let grupoId = document.getElementById('selectGrupo').value;
+            let selectAlumno = document.getElementById('selectAlumno');
+            selectAlumno.innerHTML = '<option value="">-- Seleccione Alumno --</option>';
+
+            if (!grupoId || !docenteSeleccionadoObj) return;
+            grupoSeleccionadoObj = docenteSeleccionadoObj.grupos.find(g => g.id == grupoId);
+
+            if (grupoSeleccionadoObj && grupoSeleccionadoObj.alumnos) {
+                grupoSeleccionadoObj.alumnos.forEach(a => {
+                    let opt = document.createElement('option');
+                    opt.value = a.id;
+                    opt.innerText = a.nombre;
+                    selectAlumno.appendChild(opt);
+                });
+            }
+            actualizarListaActividades();
+            reproducirSonido('click');
+        }
+
+        function actualizarListaActividades() {
+            let parcialKey = document.getElementById('selectParcial').value;
+            let selectActividad = document.getElementById('selectActividad');
+            selectActividad.innerHTML = '<option value="">-- General / Sin Actividad Específica --</option>';
+
+            if (grupoSeleccionadoObj && grupoSeleccionadoObj.parciales && grupoSeleccionadoObj.parciales[parcialKey]) {
+                let parcialObj = grupoSeleccionadoObj.parciales[parcialKey];
+                if (parcialObj.tareas) {
+                    parcialObj.tareas.forEach((t, i) => {
+                        let opt = document.createElement('option');
+                        opt.value = t.id;
+                        opt.innerText = `ACT ${i+1}: ${t.nombre}`;
+                        selectActividad.appendChild(opt);
+                    });
+                }
+            }
+        }
+
+        function generarQR() {
+            let docenteUser = document.getElementById('selectDocente').value;
+            let grupoId = document.getElementById('selectGrupo').value;
+            let alumnoId = document.getElementById('selectAlumno').value;
+            let parcial = document.getElementById('selectParcial').value;
+            let actividadId = document.getElementById('selectActividad').value;
+
+            if (!docenteUser || !grupoId || !alumnoId) {
+                mostrarAlertaCustom("Campos Incompletos", "⚠️ Por favor selecciona el docente, grupo y tu nombre.");
+                return;
+            }
+
+            let payload = {
+                docente: docenteUser,
+                grupoId: grupoId,
+                id: Number(alumnoId),
+                parcial: parcial,
+                actividadId: actividadId || null
+            };
+
+            let containerQR = document.getElementById('qrcode');
+            containerQR.innerHTML = "";
+            
+            qrInstance = new QRCode(containerQR, {
+                text: JSON.stringify(payload),
+                width: 180,
+                height: 180,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('qrResultBox').style.display = 'block';
+            reproducirSonido('exito');
+        }
+
+        function descargarQR() {
+            let img = document.querySelector('#qrcode img');
+            if (!img && document.querySelector('#qrcode canvas')) {
+                img = document.querySelector('#qrcode canvas');
+                let url = img.toDataURL("image/png");
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = 'MiCodigoQR_CECYTEQ.png';
+                a.click();
+                reproducirSonido('exito');
+                return;
+            }
+            if (img && img.src) {
+                let a = document.createElement('a');
+                a.href = img.src;
+                a.download = 'MiCodigoQR_CECYTEQ.png';
+                a.click();
+                reproducirSonido('exito');
+            } else {
+                mostrarAlertaCustom("Aviso", "Genera tu código QR primero.");
+            }
+        }
+
+        function abrirModalTabla() {
+            let alumnoId = document.getElementById('selectAlumno').value;
+            let parcialKey = document.getElementById('selectParcial').value;
+            let container = document.getElementById('contenidoTablaAlumno');
+
+            if (!grupoSeleccionadoObj || !alumnoId) {
+                container.innerHTML = "⚠️ Selecciona primero tu grupo y tu nombre para consultar tu avance.";
+                document.getElementById('modalTablaAlumno').style.display = 'flex';
+                return;
+            }
+
+            let alumno = grupoSeleccionadoObj.alumnos.find(a => a.id == alumnoId);
+            let parcialObj = grupoSeleccionadoObj.parciales ? grupoSeleccionadoObj.parciales[parcialKey] : null;
+            let califData = parcialObj && parcialObj.calificaciones ? parcialObj.calificaciones[alumnoId] : null;
+
+            if (!califData) {
+                container.innerHTML = `<b>Alumno:</b> ${alumno.nombre}<br>Sin registros de calificaciones aún en ${parcialKey}.`;
+            } else {
+                let html = `<b>Alumno:</b> ${alumno.nombre}<br><b>Parcial:</b> ${parcialKey}<br><br>`;
+                html += `<table><thead><tr><th>Concepto</th><th>Puntaje / Estado</th></tr></thead><tbody>`;
+                html += `<tr><td><b>Firmas Acumuladas</b></td><td>${califData.firmas}</td></tr>`;
+                html += `<tr><td><b>Calificación Examen</b></td><td>${califData.examen || 0}</td></tr>`;
+                html += `<tr><td><b>Calificación Final</b></td><td><b style="color:var(--cecyteq-green);">${califData.califFinal || 0}</b></td></tr>`;
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            }
+
+            document.getElementById('modalTablaAlumno').style.display = 'flex';
+            reproducirSonido('click');
+        }
+
+        function cerrarModalTabla() {
+            document.getElementById('modalTablaAlumno').style.display = 'none';
+            reproducirSonido('click');
+        }
+
+        function abrirModalIA() {
+            mostrarAlertaCustom("🤖 Asistente IA", "Esta función se encuentra actualmente en mantenimiento. ¡Pronto estará disponible para darte recomendaciones de estudio personalizadas!");
+        }
+    </script>
+</body>
+</html>

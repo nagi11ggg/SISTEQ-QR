@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Cuentas de Docentes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK v10 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAMSdJbBCh7za9CSV0oKSL9QLE8OyyQhJs",
+            authDomain: "cecyqr-pro.firebaseapp.com",
+            projectId: "cecyqr-pro",
+            storageBucket: "cecyqr-pro.firebasestorage.app",
+            messagingSenderId: "35266770164",
+            appId: "1:35266770164:web:b92bd883c3bd3a26941aa1",
+            measurementId: "G-8R0R1377Y5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        window.FB_db = db;
+        window.FB_collection = collection;
+        window.FB_getDocs = getDocs;
+        window.FB_doc = doc;
+        window.FB_deleteDoc = deleteDoc;
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+    <style>
+        :root {
+            --danger: #dc2626;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --cecyteq-green: #059669;
+            --radius: 14px;
+        }
+
+        body.dark-mode {
+            --bg-color: #0b0f19;
+            --card-bg: #131c2e;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: #22324f;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; transition: background-color 0.2s, color 0.2s; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; display: flex; justify-content: center; min-height: 100vh; }
+        
+        .container { width: 100%; max-width: 600px; background: var(--card-bg); padding: 25px; border-radius: var(--radius); box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 5px solid var(--danger); position: relative; }
+        
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        h2 { font-size: 1.25rem; color: var(--danger); display: flex; align-items: center; gap: 8px; font-weight: 700; }
+        
+        .btn-mode { background: transparent; border: 1.5px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; }
+        
+        .subtitle { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 20px; }
+        
+        .controls-row { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-refresh { background: #2563eb; color: white; border: none; padding: 9px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        
+        .account-card { background: var(--bg-color); border: 1.5px solid var(--border-color); padding: 15px; border-radius: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .account-info { font-size: 0.88rem; line-height: 1.5; }
+        
+        .btn-delete { background: #fee2e2; color: var(--danger); border: 1.5px solid #fca5a5; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .btn-delete:hover { background: var(--danger); color: white; }
+
+        .empty-msg { font-size: 0.88rem; color: var(--text-muted); text-align: center; padding: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-top">
+            <h2><i class="fa-solid fa-user-secret"></i> Panel Maestro (Nube)</h2>
+            <button class="btn-mode" onclick="toggleDarkMode()"><i class="fa-solid fa-moon"></i></button>
+        </div>
+        <div class="subtitle">Administración y control de cuentas de docentes en Firebase Firestore</div>
+        
+        <div class="controls-row">
+            <button class="btn-refresh" onclick="loadAccounts()"><i class="fa-solid fa-rotate"></i> Actualizar Lista</button>
+        </div>
+
+        <div id="accounts-list"><div class="empty-msg">Cargando desde Firebase...</div></div>
+    </div>
+
+    <script>
+        function reproducirSonido() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            } catch(e) {}
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('cecyteq_admin_dark', document.body.classList.contains('dark-mode') ? '1' : '0');
+            reproducirSonido();
+        }
+
+        if (localStorage.getItem('cecyteq_admin_dark') === '1') {
+            document.body.classList.add('dark-mode');
+        }
+
+        window.addEventListener('firebase-ready', () => { loadAccounts(); });
+
+        async function loadAccounts() {
+            const container = document.getElementById('accounts-list');
+            container.innerHTML = `<div class="empty-msg">Cargando cuentas...</div>`;
+            try {
+                const querySnapshot = await window.FB_getDocs(window.FB_collection(window.FB_db, "docentes"));
+                if (querySnapshot.empty) {
+                    container.innerHTML = `<div class="empty-msg">No hay cuentas de docentes registradas.</div>`;
+                    return;
+                }
+                let html = "";
+                let i = 1;
+                querySnapshot.forEach((docSnap) => {
+                    let t = docSnap.data();
+                    let docId = docSnap.id; // El ID en Firestore es el usuario
+                    html += `
+                        <div class="account-card">
+                            <div class="account-info">
+                                <strong>#${i++} - ${t.nombre || 'DOCENTE'}</strong><br>
+                                Usuario: <b>${t.user}</b> | Contraseña: <b>${t.pass}</b><br>
+                                Grupos creados: <b>${t.grupos ? t.grupos.length : 0}</b>
+                            </div>
+                            <button class="btn-delete" onclick="eliminarDocente('${docId}', '${t.nombre || t.user}')">
+                                <i class="fa-solid fa-trash"></i> Borrar
+                            </button>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch(e) {
+                container.innerHTML = `<div class="empty-msg">Error al conectar con la base de datos.</div>`;
+            }
+        }
+
+        async function eliminarDocente(docId, nombreDocente) {
+            if (!confirm(`¿Estás completamente seguro de eliminar la cuenta del docente "${nombreDocente}"? Esta acción no se puede deshacer y borrará sus grupos en la nube.`)) {
+                return;
+            }
+            try {
+                await window.FB_deleteDoc(window.FB_doc(window.FB_db, "docentes", docId));
+                reproducirSonido();
+                alert(`Cuenta de "${nombreDocente}" eliminada correctamente.`);
+                loadAccounts();
+            } catch(e) {
+                alert("Ocurrió un error al intentar eliminar la cuenta.");
+            }
+        }
+    </script>
+</body>
+</html>
