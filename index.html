@@ -769,6 +769,9 @@
             let nuevoAlumnoId = Date.now();
             grupo.alumnos.push({ id: nuevoAlumnoId, nombre: nombre, estado: estadoInput });
 
+            // ORDENAR ALFABÉTICAMENTE DESPUÉS DE AGREGAR
+            grupo.alumnos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
             if (grupo.parciales) {
                 Object.keys(grupo.parciales).forEach(pKey => {
                     let pData = grupo.parciales[pKey];
@@ -787,7 +790,7 @@
             nombreInput.value = '';
             await guardarYRenderizar();
             reproducirSonido('exito');
-            mostrarAlertaCustom("¡Inscrito!", `✅ Alumno "${nombre}" inscrito con éxito.`);
+            mostrarAlertaCustom("¡Inscrito!", `✅ Alumno "${nombre}" inscrito y ordenado alfabéticamente.`);
         }
 
         async function agregarTareaGrupo() {
@@ -1113,11 +1116,19 @@
                         textContent.items.forEach((item) => {
                             let texto = item.str.trim();
                             
+                            // LÓGICA DE FILTRADO ESPECÍFICA PARA LISTAS CECYTEQ (DETECTA NOMBRES Y DESCARTA ENCABEZADOS/BASURA)
                             let esBasuraPDF = texto.startsWith('/') || texto.includes('OBJ') || texto.includes('STREAM') || 
                                               texto.includes('BT') || texto.includes('ET') || texto.includes('TJ') || 
-                                              texto.length < 5 || !isNaN(texto) || texto.includes('[') || texto.includes(']');
+                                              texto.length < 5 || (!isNaN(texto) && Number(texto) > 100) || 
+                                              texto.includes('[') || texto.includes(']') ||
+                                              texto.toLowerCase().includes("cecyteq") || 
+                                              texto.toLowerCase().includes("ciclo") || 
+                                              texto.toLowerCase().includes("técnico") ||
+                                              texto.toLowerCase().includes("tprog") ||
+                                              texto.toLowerCase().includes("lista");
 
-                            if (!esBasuraPDF && !texto.toLowerCase().includes("nombre") && !texto.toLowerCase().includes("cecyteq")) {
+                            // Si es un renglón válido con letras y longitud adecuada
+                            if (!esBasuraPDF && isNaN(texto) && texto.length > 5) {
                                 let limpio = texto.toUpperCase();
                                 if (!nombresVistos.has(limpio)) {
                                     nombresVistos.add(limpio);
@@ -1126,6 +1137,9 @@
                             }
                         });
                     }
+
+                    // ORDENAR ALFABÉTICAMENTE LOS ALUMNOS IMPORTADOS DEL PDF
+                    alumnosImportados.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
                     finalizarImportacionGrupo(nombreGrupo, alumnosImportados);
                 };
@@ -1158,6 +1172,9 @@
                         }
                     });
 
+                    // ORDENAR ALFABÉTICAMENTE LOS ALUMNOS IMPORTADOS DE EXCEL
+                    alumnosImportados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
                     finalizarImportacionGrupo(nombreGrupo, alumnosImportados);
                 };
                 reader.readAsArrayBuffer(file);
@@ -1180,7 +1197,7 @@
             await guardarDocenteEnFirebase();
             renderizarGrupos(docenteDataGlobal.grupos);
             reproducirSonido('exito');
-            mostrarAlertaCustom("Importación Exitosa", `¡Grupo importado con éxito (${alumnosImportados.length} alumnos detectados)!`);
+            mostrarAlertaCustom("Importación Exitosa", `¡Grupo importado y ordenado alfabéticamente con éxito (${alumnosImportados.length} alumnos detectados)!`);
         }
 
         function abrirEscanearQR() {
