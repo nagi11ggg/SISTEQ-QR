@@ -146,9 +146,9 @@
         </div>
 
         <div class="select-card-group">
-            <label class="select-card-label">📝 Selecciona la Actividad (Opcional)</label>
+            <label class="select-card-label">📝 Selecciona la Actividad (Obligatorio)</label>
             <select id="selectActividad">
-                <option value="">-- General / Sin Actividad Específica --</option>
+                <option value="">-- Seleccione una Actividad --</option>
             </select>
         </div>
 
@@ -160,12 +160,13 @@
         </div>
 
         <div id="qrResultBox" class="qr-result-box">
-            <p style="font-weight: 800; color: var(--cecyteq-green); margin-bottom: 6px;">¡Tu código QR está listo (Válido por 5 min)!</p>
+            <p id="qrStatusText" style="font-weight: 800; color: var(--cecyteq-green); margin-bottom: 6px;">¡Tu código QR está listo (Válido por 5 min)!</p>
             <div id="qrcode"></div>
-            <button class="btn-descargar" onclick="descargarQR()">📥 Descargar Imagen QR</button>
+            <button id="btnDescargarQR" class="btn-descargar" onclick="descargarQR()">📥 Descargar Imagen QR</button>
         </div>
     </div>
 
+    <!-- MODAL DE ALERTA -->
     <div id="modalCustomAlert" class="modal-custom">
         <div class="modal-custom-content">
             <div style="font-size: 2rem; margin-bottom: 4px;">🔔</div>
@@ -175,6 +176,7 @@
         </div>
     </div>
 
+    <!-- MODAL TABLA DE CALIFICACIONES -->
     <div id="modalTablaAlumno" class="modal-custom">
         <div class="modal-custom-content" style="max-width: 480px;">
             <div class="modal-custom-title">📋 Tus Calificaciones</div>
@@ -268,7 +270,7 @@
             let selectGrupo = document.getElementById('selectGrupo');
             selectGrupo.innerHTML = '<option value="">-- Seleccione Grupo --</option>';
             document.getElementById('selectAlumno').innerHTML = '<option value="">-- Seleccione Alumno --</option>';
-            document.getElementById('selectActividad').innerHTML = '<option value="">-- General / Sin Actividad --</option>';
+            document.getElementById('selectActividad').innerHTML = '<option value="">-- Seleccione una Actividad --</option>';
 
             if (!userDocente || !docentesCache[userDocente]) return;
             docenteSeleccionadoObj = docentesCache[userDocente];
@@ -307,7 +309,7 @@
         function actualizarListaActividades() {
             let parcialKey = document.getElementById('selectParcial').value;
             let selectActividad = document.getElementById('selectActividad');
-            selectActividad.innerHTML = '<option value="">-- General / Sin Actividad Específica --</option>';
+            selectActividad.innerHTML = '<option value="">-- Seleccione una Actividad --</option>';
 
             if (grupoSeleccionadoObj && grupoSeleccionadoObj.parciales && grupoSeleccionadoObj.parciales[parcialKey]) {
                 let parcialObj = grupoSeleccionadoObj.parciales[parcialKey];
@@ -329,26 +331,48 @@
             let parcial = document.getElementById('selectParcial').value;
             let actividadId = document.getElementById('selectActividad').value;
 
-            if (!docenteUser || !grupoId || !alumnoId) {
-                mostrarAlertaCustom("Campos Incompletos", "⚠️ Por favor selecciona el docente, grupo y tu nombre.");
+            if (!docenteUser || !grupoId || !alumnoId || !actividadId) {
+                mostrarAlertaCustom("Campos Incompletos", "⚠️ Por favor selecciona el docente, grupo, tu nombre y una actividad específica.");
                 return;
             }
 
-            // Candado de expiración: El código QR dura exactamente 5 minutos (300,000 ms)
-            let tiempoExpiracion = Date.now() + (5 * 60 * 1000);
+            let claveRegistroQR = `cecyteq_qr_${alumnoId}_${parcial}_${actividadId}`;
+            let estadoQR = localStorage.getItem(claveRegistroQR);
+
+            let containerQR = document.getElementById('qrcode');
+            let qrStatusText = document.getElementById('qrStatusText');
+            let btnDescargar = document.getElementById('btnDescargarQR');
+            let boxResult = document.getElementById('qrResultBox');
+
+            // SI YA FUE ESCANEADO O REGISTRADO PREVIAMENTE
+            if (estadoQR === 'escaneado') {
+                containerQR.innerHTML = "";
+                qrStatusText.innerText = "❌ CÓDIGO ESCANEADO Y REGISTRADO";
+                qrStatusText.style.color = "var(--danger-red)";
+                btnDescargar.style.display = "none";
+                boxResult.style.display = 'block';
+                mostrarAlertaCustom("Código Ya Registrado", "⚠️ Este código ya fue escaneado por el docente anteriormente. No se puede volver a generar.");
+                return;
+            }
+
+            // SI YA HABÍA SIDO GENERADO PERO NO ESCANEADO
+            if (estadoQR === 'generado') {
+                mostrarAlertaCustom("Código Ya Hecho", "⚠️ Ya habías generado un código para esta actividad. Muestra tu captura o espera a que sea escaneado.");
+                return;
+            }
+
+            let tiempoExpiracion = Date.now() + (5 * 60 * 1000); // 5 minutos
 
             let payload = {
                 docente: docenteUser,
                 grupoId: grupoId,
                 id: Number(alumnoId),
                 parcial: parcial,
-                actividadId: actividadId || null,
+                actividadId: actividadId,
                 exp: tiempoExpiracion
             };
 
-            let containerQR = document.getElementById('qrcode');
             containerQR.innerHTML = "";
-            
             qrInstance = new QRCode(containerQR, {
                 text: JSON.stringify(payload),
                 width: 180,
@@ -358,7 +382,15 @@
                 correctLevel: QRCode.CorrectLevel.H
             });
 
-            document.getElementById('qrResultBox').style.display = 'block';
+            qrStatusText.innerText = "¡Tu código QR está listo (Válido por 5 min)!";
+            qrStatusText.style.color = "var(--cecyteq-green)";
+            btnDescargar.style.display = "block";
+
+            // Guardar que ya fue generado
+            localStorage.setItem(claveRegistroQR, 'generado');
+
+            boxResult.style.display = 'block';
+            mostrarAlertaCustom("Código Generado", "⚡ Tu código QR está listo.");
             reproducirSonido('exito');
         }
 
